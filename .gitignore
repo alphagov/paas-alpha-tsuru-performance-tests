@@ -41,3 +41,7 @@ Thumbs.db
 #################
 *.jtl
 
+# A generic jmx file should never be committed.
+jmeter.jmx
+
+
