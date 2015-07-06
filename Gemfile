@@ -1,1 +1,1 @@
-"rubocop"
+gem 'rubocop', require: false
