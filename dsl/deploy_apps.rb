@@ -76,7 +76,7 @@ test do
     end
 
     post url: '/apps',
-         raw_body: '{"name":"davas-${app_id}","plan":{"name":""},"platform":"java","pool":"","teamOwner":""}'
+         raw_body: '{"name":"testapp-${app_id}","plan":{"name":""},"platform":"java","pool":"","teamOwner":""}'
 
     os_process_sampler 'SystemSampler.command'     => 'git',
                        'SystemSampler.arguments'   => %w(push origin master),

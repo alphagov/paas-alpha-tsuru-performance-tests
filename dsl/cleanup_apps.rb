@@ -27,8 +27,7 @@ test do
   auth_url = "/users/" + CGI.escape("administrator@gds.tsuru.gov") + "/tokens"
   threads count: ARGV[1].to_i, loops: ARGV[2].to_i do
     Once do
-      post url: auth_url,
-        raw_body: '{ "password": "admin123" }' do
+      post url: auth_url, raw_body: '{ "password": "admin123" }' do
         extract regex: '"token":"(\w+)",', name: "auth_token"
       end
     end
@@ -37,7 +36,7 @@ test do
     header [
       { name: "Authorization", value: "bearer ${auth_token}" }
     ]
-    delete url: "/apps/davas-${app_id}"
+    delete url: "/apps/testapp-${app_id}"
   end
 
   debug_sampler
