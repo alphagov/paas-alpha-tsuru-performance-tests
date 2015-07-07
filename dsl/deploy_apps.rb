@@ -6,12 +6,13 @@ require './ssh_helper'
 require 'fileutils'
 
 if ARGV.size != 4
-  puts '\n\n------- Tsuru perf test: ERROR! --------'
+  puts '------- Tsuru perf test: ERROR! --------'
   puts '      Usage:'
-  puts '      Please specify a tsuru target domain, a thread'
-  puts '  count and a loop count for each thread.\n '
+  puts '      Please specify a tsuru target environment,'
+  puts '      a tsuru host suffix, a thread count '
+  puts '      and a loop count for each thread.'
   puts '      Example:'
-  puts '          \n\n'
+  puts '           bundle exec ruby deploy_apps.rb ci tsuru2.paas.alphagov.co.uk 1 1    '
   exit 1
 end
 

@@ -2,15 +2,21 @@ require "rubygems"
 require "ruby-jmeter"
 require "cgi"
 
-if ARGV.size != 3
-  puts "\n\n------- Tsuru perf test: ERROR! --------"
+if ARGV.size != 4
+  puts "------- Tsuru perf test: ERROR! --------"
   puts "      Usage:"
-  puts "      Please specify a tsuru target domain,  "
-  puts "  a thread count and a loop count for each thread.\n"
+  puts "      Please specify a tsuru target env, tsuru root hostname"
+  puts "      a thread count and a loop count for each thread.\n"
   puts "      Example:"
-  puts "          \n\n"
+  puts "          bundle exec ruby cleanup_apps.rb ci tsuru2.paas.alphagov.co.uk 1 1"
   exit 1
 end
+
+environment  = ARGV[0]
+host_suffix  = ARGV[1]
+thread_count = ARGV[2].to_i
+loop_count   = ARGV[3].to_i
+
 
 test do
   counter "CounterConfig.name" => "app_id",
@@ -19,7 +25,7 @@ test do
           "CounterConfig.per_user" => "false",
           "CounterConfig.reset_on_tg_iteration" => "false"
 
-  defaults domain: ARGV[0], protocol: "https"
+  defaults domain: environment + '-api.' + host_suffix, protocol: 'https'
 
   header [
     { name: "Content-Type", value: "application/json" }
@@ -41,4 +47,4 @@ test do
 
   debug_sampler
   view_results_tree
-end.run
+end.jmx

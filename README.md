@@ -21,7 +21,7 @@ To run the tests:
 
 ```
 cd  ./dsl
-bundle exec ruby deploy_apps.rb  <TSURU_TARGET_URL> 100 100
+bundle exec ruby deploy_apps.rb <TSURU_ENVIRONMENT_NAME>  <TSURU_TARGET_HOST> 100 100
 ```
 
 This will generate a jmeter.jmx file which you can load into the Jmeter gui or use in a headless mode.
@@ -30,7 +30,7 @@ However, due to https://github.com/flood-io/ruby-jmeter/issues/43 you'll need to
 the os_process_sampler:
 
  * push
- * git@ci-gandalf.tsuru2.paas.alphagov.co.uk:davas-${app_id}.git
+ * git@ci-gandalf.tsuru2.paas.alphagov.co.uk:testapp-${app_id}.git
  * master
 
 And the following environment variables:
@@ -44,7 +44,7 @@ To clean up afterwards run:
 
 ```
 cd  ./dsl
-bundle exec ruby cleanup_apps.rb <TSURU_TARGET_URL> 100 100
+bundle exec ruby cleanup_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100 100
 ```
 
 
@@ -67,7 +67,7 @@ Once you've generated the xml for deploying the applications, your systemsampler
               </elementProp>
               <elementProp name="" elementType="Argument">
                 <stringProp name="Argument.name"></stringProp>
-                <stringProp name="Argument.value">git@ci-gandalf.tsuru2.paas.alphagov.co.uk:davas-${app_id}.git</stringProp>
+                <stringProp name="Argument.value">git@ci-gandalf.tsuru2.paas.alphagov.co.uk:testapp-${app_id}.git</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
               </elementProp>
               <elementProp name="" elementType="Argument">
