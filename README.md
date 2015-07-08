@@ -8,12 +8,21 @@ Currently, these tests are only runnable against the CI environment.
 
 ## How to install
 
+ * mac osx:
+	`brew install jmeter`
+ * Ubuntu / Debian:
+	`apt-get install jmeter`
+ * Other:
+ 	`http://jmeter.apache.org/usermanual/get-started.html`
+
 ```
-Brew install jmeter
 git clone https://github.com/alphagov/tsuru-performance-testing
 cd ./tsuru-performance-testing
 bundle install
 ```
+
+For running the jmeter DSL scripts, we use ruby 2.2.2. It is recommended that you make use of [rvm](https://rvm.io/) or [rbenv](http://rbenv.org/).
+
 
 ## How to run these tests locally
 
@@ -21,7 +30,7 @@ To run the tests:
 
 ```
 cd  ./dsl
-bundle exec ruby deploy_apps.rb <TSURU_ENVIRONMENT_NAME>  <TSURU_TARGET_HOST> 100 100
+bundle exec ruby deploy_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100 100
 ```
 
 This will generate a jmeter.jmx file which you can load into the Jmeter gui or use in a headless mode.
