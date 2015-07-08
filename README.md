@@ -35,8 +35,44 @@ bundle exec ruby deploy_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100
 
 This will generate a jmeter.jmx file which you can load into the Jmeter gui or use in a headless mode.
 
-However, due to https://github.com/flood-io/ruby-jmeter/issues/43 you'll need to add the following parameters to
-the os_process_sampler:
+However, [due a bug in ruby-jmeter](https://github.com/flood-io/ruby-jmeter/issues/43), we need to add addional configuration.
+See below for details, but this can be automatically added by running:
+
+```
+./add_systemsampler.sh  <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST>
+```
+
+This will deploy a 100x100, that is 10k apps, making use of a 100 users (threads) to each deploy a 100 apps.
+
+Once you have opened the file in jmeter GUI and added the correct parameters or ammended the file,
+you can run the jmx file in a headless manner:
+
+```
+jmeter -n -t jmeter.jmx -l my_results.jtl
+```
+
+This will output the results of the run to the `my_results.jtl` file for further analysis.
+
+To clean up afterwards, generate a new jmx file with cleanup instructions:
+
+```
+bundle exec ruby cleanup_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100 100
+jmeter -n -t jmeter.jmx -l my_results.jtl
+```
+
+and run it:
+
+```
+jmeter -n -t jmeter.jmx -l my_results.jtl
+```
+
+## Known issues
+
+### Example OS Process Sampler
+
+There is [a bug in ruby-jmeter](https://github.com/flood-io/ruby-jmeter/issues/43)
+that requires you to add the following parameters to
+the `os_process_sampler`:
 
  * push
  * git@ci-gandalf.tsuru2.paas.alphagov.co.uk:testapp-${app_id}.git
@@ -47,30 +83,8 @@ And the following environment variables:
  * 'HOME' : '/tmp/tsuru_tmp'
  * 'GIT_SSH' : '/tmp/tsuru_tmp/ssh-wrapper'
 
-This will deploy a thousand apps, making use of a 100 users (threads) to each deploy a 100 apps.
-
-Once you have opened the file in jmeter GUI and added the correct parameters (or edited the jmeter.jmx file using the snippet below)
-you can run the jmx file in a headless manner:
-
-```
-jmeter -n -t jmeter2.jmx -l my_results.jtl
-```
-
-This will output the results of the run to the `my_results.jtl` file for further analysis.
-
-
-To clean up afterwards run:
-
-```
-cd  ./dsl
-bundle exec ruby cleanup_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100 100
-```
-
-
-
-### Example OS Process Sampler
-
-Once you've generated the xml for deploying the applications, your systemsampler section will need to look similar to this:
+We need to amend the file once you've generated the xml for deploying the
+applications, your systemsampler section will need to look similar to this:
 
 ```
  <SystemSampler guiclass="SystemSamplerGui" testclass="SystemSampler" testname="OsProcessSampler" enabled="true">
@@ -113,4 +127,6 @@ Once you've generated the xml for deploying the applications, your systemsampler
           <stringProp name="SystemSampler.directory">/tmp/tsuru_tmp/example-java-jetty</stringProp>
         </SystemSampler>
 ```
+
+We provide a script `add_systemsampler.sh` to do this automatically
 
