@@ -26,7 +26,7 @@ For running the jmeter DSL scripts, we use ruby 2.2.2. It is recommended that yo
 
 ## How to run these tests locally
 
-To run the tests:
+### To run the deploy_apps test script:
 
 ```
 cd  ./dsl
@@ -48,6 +48,16 @@ And the following environment variables:
  * 'GIT_SSH' : '/tmp/tsuru_tmp/ssh-wrapper'
 
 This will deploy a thousand apps, making use of a 100 users (threads) to each deploy a 100 apps.
+
+Once you have opened the file in jmeter GUI and added the correct parameters (or edited the jmeter.jmx file using the snippet below)
+you can run the jmx file in a headless manner:
+
+```
+jmeter -n -t jmeter2.jmx -l my_results.jtl
+```
+
+This will output the results of the run to the `my_results.jtl` file for further analysis.
+
 
 To clean up afterwards run:
 
