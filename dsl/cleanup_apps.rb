@@ -19,10 +19,10 @@ loop_count   = ARGV[3].to_i
 
 
 test do
-  counter "CounterConfig.name" => "app_id",
-          "CounterConfig.start" => 1,
-          "CounterConfig.incr" => 1,
-          "CounterConfig.per_user" => "false",
+  counter "CounterConfig.name"                  => "app_id",
+          "CounterConfig.start"                 => 1,
+          "CounterConfig.incr"                  => 1,
+          "CounterConfig.per_user"              => "false",
           "CounterConfig.reset_on_tg_iteration" => "false"
 
   defaults domain: environment + '-api.' + host_suffix, protocol: 'https'
