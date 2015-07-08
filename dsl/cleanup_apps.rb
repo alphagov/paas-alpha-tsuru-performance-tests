@@ -31,7 +31,7 @@ test do
     { name: "Content-Type", value: "application/json" }
   ]
   auth_url = "/users/" + CGI.escape("administrator@gds.tsuru.gov") + "/tokens"
-  threads count: ARGV[1].to_i, loops: ARGV[2].to_i do
+  threads count: thread_count, loops: loop_count do
     Once do
       post url: auth_url, raw_body: '{ "password": "admin123" }' do
         extract regex: '"token":"(\w+)",', name: "auth_token"
