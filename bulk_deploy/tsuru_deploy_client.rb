@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'digest/sha1'
 
 class TsuruDeployClient
 
@@ -76,6 +77,18 @@ class TsuruDeployClient
     end
   end
 
+  def import_pg_dump(app_name, postgres_instance_name, ssh_config)
+    system "python -c \"import boto;boto.connect_s3().get_bucket('digital-marketplace-stuff').get_key('full.dump').get_contents_to_filename('#{@tsuru_home}/full.dump')\""
+    postgres_ip = @api_client.get_env_vars(app_name)["PG_HOST"]
+    db_name = canonicalize_db_name(postgres_instance_name)
+    scp_cmd = "scp -F #{ssh_config} #{@tsuru_home}/full.dump #{postgres_ip}:~/full.dump"
+    self.logger.info("SCP postgres dump file over: #{scp_cmd}")
+    system scp_cmd
+    restore_cmd = "ssh -F #{ssh_config} #{postgres_ip} 'pg_restore -a -U postgres -d #{db_name} -Fc ~/full.dump'"
+    self.logger.info("Let's restore the data from backup: #{restore_cmd}")
+    system restore_cmd
+  end
+
   private
 
   def app_deploy(path, app_name)
@@ -100,6 +113,12 @@ class TsuruDeployClient
         raise "Failed to remove key"
       end
     end
+  end
+
+  # See https://github.com/tsuru/postgres-api/blob/master/postgresapi/models.py#L45
+  def canonicalize_db_name(name)
+    name += Digest::SHA1.hexdigest(name)[0..9]
+    return name.gsub(/-/, '_')
   end
 
 end
