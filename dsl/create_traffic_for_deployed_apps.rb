@@ -50,6 +50,16 @@ test do
   		end
   	end
   end
+
+
+  csv_data_set_config filename: 'java_apps.csv',
+  	variableNames: 'java_app_url'
+  threads count: thread_count do
+  	visit name: 'Java app home page', url: '${java_app_url}'
+  		assert contains: "Powered by"
+  end
+
+
 end.jmx
 
 

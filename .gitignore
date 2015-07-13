@@ -50,4 +50,5 @@ deploy.state
 
 # Our intermediate CSV files should not be committed.
 flask_apps.csv
+java_apps.csv
 
