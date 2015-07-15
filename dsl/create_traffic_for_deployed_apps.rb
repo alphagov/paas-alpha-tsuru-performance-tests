@@ -23,10 +23,11 @@ loop_count   = ARGV[3].to_i
 
 test do
   cookies
-  csv_data_set_config filename: 'flask_apps.csv',
-                      variableNames: 'app_url'
+
 
   threads count: thread_count, loops: loop_count do
+    csv_data_set_config filename: 'flask_apps.csv',
+                        variableNames: 'app_url'
     visit name: 'home page', url: '${app_url}' do
       assert contains: "Flasktest"
     end
@@ -52,29 +53,22 @@ test do
     end
  end
 
- csv_data_set_config filename: 'java_apps.csv',
-                      variableNames: 'java_app_url'
   threads count: thread_count, loops: loop_count do
+    csv_data_set_config filename: 'java_apps.csv',
+                        variableNames: 'java_app_url'
     visit name: 'Java app home page', url: '${java_app_url}'
     assert contains: 'Powered by'
   end
 
-  csv_data_set_config filename: 'gov_uk_apps.csv',
-                      variableNames: 'govuk_app_url'
   threads count: thread_count, loops: loop_count do
     csv_data_set_config filename: 'gov_uk_urls.csv',
-                        variableNames: 'path'
-    visit name: 'Visiting ${path}', url: '${govuk_app_url}${path}'
+                          variableNames: 'g_url'
+    visit name: 'Visiting ${g_url}', url: '${g_url}'
   end
 
-  csv_data_set_config filename: 'marketplace_apps.csv',
-                    variableNames: 'marketplace_app_url'
   threads count: thread_count, loops: loop_count do
-   csv_data_set_config filename: 'marketplace_urls.csv',
-                        variableNames: 'mp_path'
-    visit name: 'Visiting ${mp_path}', url: '${marketplace_app_url}${mp_path}'
+    csv_data_set_config filename: 'marketplace_urls.csv',
+                        variableNames: 'mp_url'
+    visit name: 'Visiting ${mp_url}', url: '${mp_url}'
   end
-
 end.jmx
-
-
