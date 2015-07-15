@@ -66,6 +66,33 @@ and run it:
 jmeter -n -t jmeter.jmx -l my_results.jtl
 ```
 
+### To run the traffic load test for deployed apps tests
+
+Before you begin your test run, make sure that you have run the `generate_traffic_data.rb` script.
+This will create three csv files in the DSL folder; one for the flask example app, one for the
+java jetty app, one for digital marketplace and one for GOV.UK frontend application.
+
+Each one of these csv files contains a list of app urls for a deployed instance of that application
+as exposed by the Tsuru platform. They are then consumed by the `create_traffic_for_deployed_apps.rb`
+jmeter dsl file.
+
+To create the jmeter jmx file for this performance test, run:
+
+```
+bundle exec ruby create_traffic_for_deployed_apps.rb <TSURU_ENVIRONMENT_NAME> <TSURU_TARGET_HOST> 100 100
+
+```
+
+Where '100 100' cli args will create a 100 threads that will execute 100 times. The script will create
+a jmeter.jmx file in the local directory that can then be run via jmeter headless mode thus:
+
+```
+jmeter -n -t jmeter.jmx -l my_results.jtl
+```
+
+It has been helpful to have the graphana dashboards preconfigured to running this performance test, so
+that the current state and affect of the performance test can be viewed.
+
 ## Known issues
 
 ### Example OS Process Sampler

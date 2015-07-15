@@ -25,6 +25,7 @@ test do
   cookies
 
 
+
   threads count: thread_count, loops: loop_count do
     csv_data_set_config filename: 'flask_apps.csv',
                         variableNames: 'app_url'
@@ -71,4 +72,5 @@ test do
                         variableNames: 'mp_url'
     visit name: 'Visiting ${mp_url}', url: '${mp_url}'
   end
+  view_results_tree
 end.jmx
