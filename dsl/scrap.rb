@@ -37,7 +37,20 @@ environment = options[:environment]
 host_suffix = options[:host_suffix]
 
 logger = Logger.new(STDOUT)
-logger.level = Logger::INFO
+case options[:log_level].downcase
+  when 'debug'
+    logger.level = Logger::DEBUG
+  when 'info'
+    logger.level = Logger::INFO
+  when 'warn'
+    logger.level = Logger::WARN
+  when 'error'
+    logger.level = Logger::ERROR
+  when 'fatal'
+    logger.level = Logger::FATAL
+  else
+    raise "Error: Unknown log level: #{options[:log_level]}"
+end
 
 class AppType
   attr_accessor :name, :pattern, :paths, :apps
