@@ -91,10 +91,10 @@ app_types = []
 app_types << AppType.new('java', 'java-app-')
 app_types << AppType.new('flask', 'flask-app-')
 app_types << AppType.new('dm-supplier-frontend', 'dm-supplier-frontend-app-', ['/suppliers'])
-app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-', ['/'])
+app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-')
 app_types << AppType.new('dm-admin-frontend', 'dm-admin-frontend-app-', ['/admin'])
-app_types << AppType.new('dm-search-api', 'dm-search-api-app-', ['/'])
-app_types << AppType.new('dm-api', 'dm-api-app-', ['/'])
+app_types << AppType.new('dm-search-api', 'dm-search-api-app-')
+app_types << AppType.new('dm-api', 'dm-api-app-')
 
 
 api_client = TsuruAPIClient.new(
@@ -103,17 +103,26 @@ api_client = TsuruAPIClient.new(
   host: host_suffix
 )
 
+logger.info("Connect to API [Environment: #{environment}, Host_suffix: #{host_suffix}]")
 api_client.login 'administrator@gds.tsuru.gov', 'admin123'
 
+logger.info("Get list of applications")
 apps = api_client.list_apps
 
+logger.info("Found #{apps.size} applications")
+
+logger.info("Sort applications")
 apps.each do |app|
-    match = app_types.find { |d| /#{d.pattern}/ =~ app }
+    match = app_types.find { |t| /#{t.pattern}/ =~ app }
     next unless match
+    logger.debug "Add application #{app} to type #{match.name}"
     match.add_app app
 end
 
 app_types.each do |app_type|
-    File.open("#{app_type.name}.csv", 'w') { |f| f.write app_type.urls * "\n" }
+    file_name = "#{app_type.name}.csv"
+    urls = app_type.urls
+    logger.info("Write #{urls.size} URLs to file #{file_name}")
+    File.open(file_name, 'w') { |f| f.write urls * "\n" }
 end
 
