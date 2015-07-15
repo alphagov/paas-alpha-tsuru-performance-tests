@@ -24,41 +24,56 @@ loop_count   = ARGV[3].to_i
 test do
   cookies
   csv_data_set_config filename: 'flask_apps.csv',
-    variableNames: 'app_url'
+                      variableNames: 'app_url'
 
-  threads count: thread_count do
+  threads count: thread_count, loops: loop_count do
     visit name: 'home page', url: '${app_url}' do
-   	  assert contains: "Flasktest"
-  	end
-  	visit name:"login", url: '${app_url}/login' do
-  	  assert contains: "Password"
-  	end
-  	submit name: 'Submit Form', url: '${app_url}/login',
-  		fill_in: {
-    		username: 'admin',
-    		password: 'default',
-  		}
+      assert contains: "Flasktest"
+    end
+    visit name:"login", url: '${app_url}/login' do
+      assert contains: "Password"
+    end
+    submit name: 'Submit Form', url: '${app_url}/login',
+        fill_in: {
+            username: 'admin',
+            password: 'default',
+        }
 
-  	submit name: 'Add a blogpost', url: '${app_url}/add',
-  		fill_in: {
-  			title: "hola",
-  			text: "This is not a test",
-  		}
-  	visit name: 'Capture for delete', url: '${app_url}' do
-		extract regex: '/remove/(.+?)', variable: 'post_id' do
-  			visit name: 'Delete posts', url: '${app_url}/remove/${post_id}'
-  		end
-  	end
+    submit name: 'Add a blogpost',
+           url: '${app_url}/add',
+           fill_in: {
+             title: 'hola',
+             text: 'This is not a test',
+           }
+    visit name: 'Capture for delete', url: '${app_url}' do
+        extract regex: '/remove/(.+?)', variable: 'post_id' do
+            visit name: 'Delete posts', url: '${app_url}/remove/${post_id}'
+        end
+    end
+ end
+
+ csv_data_set_config filename: 'java_apps.csv',
+                      variableNames: 'java_app_url'
+  threads count: thread_count, loops: loop_count do
+    visit name: 'Java app home page', url: '${java_app_url}'
+    assert contains: 'Powered by'
   end
 
-
-  csv_data_set_config filename: 'java_apps.csv',
-  	variableNames: 'java_app_url'
-  threads count: thread_count do
-  	visit name: 'Java app home page', url: '${java_app_url}'
-  		assert contains: "Powered by"
+  csv_data_set_config filename: 'gov_uk_apps.csv',
+                      variableNames: 'govuk_app_url'
+  threads count: thread_count, loops: loop_count do
+    csv_data_set_config filename: 'gov_uk_urls.csv',
+                        variableNames: 'path'
+    visit name: 'Visiting ${path}', url: '${govuk_app_url}${path}'
   end
 
+  csv_data_set_config filename: 'marketplace_apps.csv',
+                    variableNames: 'marketplace_app_url'
+  threads count: thread_count, loops: loop_count do
+   csv_data_set_config filename: 'marketplace_urls.csv',
+                        variableNames: 'mp_path'
+    visit name: 'Visiting ${mp_path}', url: '${marketplace_app_url}${mp_path}'
+  end
 
 end.jmx
 
