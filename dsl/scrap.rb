@@ -1,8 +1,41 @@
 require 'logger'
+require 'optparse'
 require_relative '../bulk_deploy/tsuru_api_client'
 
-environment = 'danjim'
-host_suffix = 'tsuru2.paas.alphagov.co.uk'
+options = {}
+options[:log_level] = 'info'
+
+parser = OptionParser.new do |opts|
+  script_name = File.basename($0)
+  opts.banner = "Usage: bundle exec #{script_name} [options]"
+  opts.define_head "Example: bundle exec #{script_name} --environment perf-env --host-suffix tsuru2.paas.alphagov.co.uk"
+
+  opts.on("-e", "--environment=e", "Environment [Required]") do |e|
+    options[:environment] = e
+  end
+  opts.on("-h", "--host-suffix=h", "Host suffix [Required]") do |h|
+    options[:host_suffix] = h
+  end
+  opts.on("-l", "--log-level=l", "Log level [Default: #{options[:log_level]}]") do |l|
+    options[:log_level] = l
+  end  
+end
+
+begin
+  parser.parse!
+  raise "Error: Missing option: environment" unless options[:environment]
+  raise "Error: Missing option: host_suffix" unless options[:host_suffix]
+  raise "Error: Unknown log level: #{options[:log_level]}" unless
+    ['debug', 'info', 'warn', 'error', 'fatal'].include? options[:log_level]
+rescue Exception => e
+  puts e
+  puts parser
+  exit 1
+end
+
+environment = options[:environment]
+host_suffix = options[:host_suffix]
+
 logger = Logger.new(STDOUT)
 logger.level = Logger::INFO
 
