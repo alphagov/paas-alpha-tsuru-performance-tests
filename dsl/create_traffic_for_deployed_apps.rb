@@ -4,9 +4,9 @@ if ARGV.size != 4
   puts "------- Tsuru perf test: ERROR! --------"
   puts "      Usage:"
   puts "      Please specify a tsuru target env, tsuru root hostname"
-  puts "      a thread count and a loop count for each thread.\n"
+  puts "      a thread count and a loop count for each thread."
   puts "      Example:"
-  puts "          bundle exec ruby cleanup_apps.rb ci tsuru2.paas.alphagov.co.uk 1 1"
+  puts "          bundle exec ruby create_traffic_for_deployed_apps.rb ci tsuru2.paas.alphagov.co.uk 1 1"
   exit 1
 end
 
@@ -14,7 +14,6 @@ environment  = ARGV[0]
 environment_suffix  = ARGV[1]
 thread_count = ARGV[2].to_i
 loop_count   = ARGV[3].to_i
-
 
 test do
   cookies
