@@ -214,15 +214,11 @@ class TsuruAPIClient
   end
 
   def remove_units(units, app_name)
-    objects = request(
+    request(
       method: :delete,
       path: "/apps/#{app_name}/units",
       body: units.to_s
     )
-
-    for obj in objects
-      @logger.info(obj["Message"])
-    end
   end
 
   def list_apps()
@@ -349,14 +345,10 @@ class TsuruAPIClient
   end
 
   def unbind_service_from_app(name, app_name)
-    objects = request(
+    request(
       method: :delete,
       path: "/services/instances/#{name}/#{app_name}"
     )
-
-    for obj in objects
-      @logger.info(obj["Message"])
-    end
   end
 
   private
