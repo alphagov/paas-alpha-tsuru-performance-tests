@@ -1,10 +1,5 @@
 require "ruby-jmeter"
 
-
-require "rubygems"
-require "ruby-jmeter"
-require "cgi"
-
 if ARGV.size != 4
   puts "------- Tsuru perf test: ERROR! --------"
   puts "      Usage:"
