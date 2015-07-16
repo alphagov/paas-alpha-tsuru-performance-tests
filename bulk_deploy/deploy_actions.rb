@@ -322,6 +322,7 @@ class DeployActions
         host: host_suffix
     )
 
+
     @logger.info "Login admin user"
     api_client.login('administrator@gds.tsuru.gov', 'admin123')
 
@@ -349,6 +350,21 @@ class DeployActions
         rescue Exception => e
           @logger.error "Cannot remove application #{deployed[:app]}. Exception: #{e}"
         end
+
+        # Tsuru deletes the application in the background
+        app_removed = false
+        i = 0
+        until app_removed or i == 60
+          @logger.debug "Waiting for application #{deployed[:app]} to be deleted"
+          sleep 1
+          i += 1
+          begin
+            api_client.get_app_info deployed[:app]
+          rescue Exception => e
+            app_removed = true
+          end
+        end
+        @logger.error "Application #{deployed[:app]} was not deleted in 60s" if i == 60
 
         @logger.debug "Remove user #{user}"
         begin
