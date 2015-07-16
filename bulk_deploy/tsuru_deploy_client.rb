@@ -16,7 +16,7 @@ class TsuruDeployClient
     target_path = File.join(ENV["HOME"], ".tsuru_target")
     unless File.exists?(target_path) and \
     File.read(target_path).include?(target.to_s)
-      system "tsuru target-set #{environment} #{target}"
+      system "tsuru target-set #{environment}"
     end
 
     @api_client = api_client

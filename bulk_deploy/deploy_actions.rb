@@ -135,14 +135,6 @@ class DeployActions
       system "cd #{dm_admin_frontend_app_dir} && git pull"
     end
 
-    deploy_client = TsuruDeployClient.new(
-      api_client: api_client,
-      logger: @logger,
-      environment: environment,
-      host: host_suffix,
-      tsuru_home: tsuru_home
-    )
-
     log_dict = {}
 
     begin
