@@ -364,7 +364,7 @@ class DeployActions
       rescue Exception => e
         @logger.error "Cannot remove team #{team}. Exception: #{e}"
         # Implemented retry because the team cannot be deleted immediately after deleting the apps
-        if failed < 3
+        if ! e.message.include? "404 Not Found" and failed < 3
           @logger.error "Retry to remove team #{team}"
           sleep 1
           failed += 1
