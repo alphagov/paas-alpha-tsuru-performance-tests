@@ -95,6 +95,7 @@ app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-')
 app_types << AppType.new('dm-admin-frontend', 'dm-admin-frontend-app-', ['/admin'])
 app_types << AppType.new('dm-search-api', 'dm-search-api-app-')
 app_types << AppType.new('dm-api', 'dm-api-app-')
+app_types << AppType.new('gov-frontend', 'gov-frontend-')
 
 
 api_client = TsuruAPIClient.new(
