@@ -24,53 +24,85 @@ loop_count   = ARGV[3].to_i
 test do
   cookies
 
-
-
+  # Flask
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'flask_apps.csv',
-                        variableNames: 'app_url'
-    visit name: 'home page', url: '${app_url}' do
+    csv_data_set_config filename: 'flask.csv',
+                        variableNames: 'flask_url'
+    visit name: 'Flask app home page', url: '${flask_url}' do
       assert contains: "Flasktest"
     end
-    visit name:"login", url: '${app_url}/login' do
+    visit name:"login", url: '${flask_url}/login' do
       assert contains: "Password"
     end
-    submit name: 'Submit Form', url: '${app_url}/login',
+    submit name: 'Submit Form', url: '${flask_url}/login',
         fill_in: {
             username: 'admin',
             password: 'default',
         }
 
     submit name: 'Add a blogpost',
-           url: '${app_url}/add',
+           url: '${flask_url}/add',
            fill_in: {
              title: 'hola',
              text: 'This is not a test',
            }
-    visit name: 'Capture for delete', url: '${app_url}' do
+    visit name: 'Capture for delete', url: '${flask_url}' do
         extract regex: '/remove/(.+?)', variable: 'post_id' do
-            visit name: 'Delete posts', url: '${app_url}/remove/${post_id}'
+            visit name: 'Delete posts', url: '${flask_url}/remove/${post_id}'
         end
     end
- end
+  end
 
+  # Java
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'java_apps.csv',
-                        variableNames: 'java_app_url'
-    visit name: 'Java app home page', url: '${java_app_url}'
+    csv_data_set_config filename: 'java.csv',
+                        variableNames: 'java_url'
+    visit name: 'Java app home page', url: '${java_url}'
     assert contains: 'Powered by'
   end
 
+  # gov.uk
   threads count: thread_count, loops: loop_count do
     csv_data_set_config filename: 'gov_uk_urls.csv',
-                          variableNames: 'g_url'
+                        variableNames: 'g_url'
     visit name: 'Visiting ${g_url}', url: '${g_url}'
   end
 
+  # Digital marketplace admin
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'marketplace_urls.csv',
-                        variableNames: 'mp_url'
-    visit name: 'Visiting ${mp_url}', url: '${mp_url}'
+    csv_data_set_config filename: 'dm-admin-frontend.csv',
+                        variableNames: 'dm_admin_url'
+    visit name: 'Visiting ${dm_admin_url}', url: '${dm_admin_url}'
   end
+
+  # Digital marketplace buyer
+  threads count: thread_count, loops: loop_count do
+    csv_data_set_config filename: 'dm-buyer-frontend.csv',
+                        variableNames: 'dm_buyer_url'
+    visit name: 'Visiting ${dm_buyer_url}', url: '${dm_buyer_url}'
+  end
+
+  # Digital marketplace supplier
+  threads count: thread_count, loops: loop_count do
+    csv_data_set_config filename: 'dm-supplier-frontend.csv',
+                        variableNames: 'dm_supplier_url'
+    visit name: 'Visiting ${dm_supplier_url}', url: '${dm_supplier_url}'
+  end
+
+  # # Digital marketplace API
+  # threads count: thread_count, loops: loop_count do
+  #   csv_data_set_config filename: 'dm-api.csv',
+  #                       variableNames: 'dm_api_url'
+  #   visit name: 'Visiting ${dm_api_url}', url: '${dm_api_url}'
+  # end
+
+  # # Digital marketplace Search API
+  # threads count: thread_count, loops: loop_count do
+  #   csv_data_set_config filename: 'dm-search-api.csv',
+  #                       variableNames: 'dm_search_api_url'
+  #   visit name: 'Visiting ${dm_search_api_url}', url: '${dm_search_api_url}'
+  # end
+
   view_results_tree
+
 end.jmx
