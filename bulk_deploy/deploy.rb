@@ -15,7 +15,7 @@ help = false
 parser = OptionParser.new do |opts|
   script_name = File.basename($0)
   opts.banner = "Usage: bundle exec #{script_name} action [options]"
-  opts.define_head "Example: bundle exec #{script_name} --environment perf-env --host-suffix tsuru2.paas.alphagov.co.uk apply"
+  opts.define_head "Example: bundle exec #{script_name} -e perf-env -h tsuru2.paas.alphagov.co.uk -c ~/github.com/alphagov/tsuru-ansible/ssh.config apply"
 
   opts.on("-e", "--environment=e", "Environment [Required]") do |e|
     options[:environment] = e
@@ -28,6 +28,9 @@ parser = OptionParser.new do |opts|
   end
   opts.on("-S", "--search-api-token=S", "Search API token [Required]") do |s|
     options[:search_api_token] = s
+  end
+  opts.on("-c", "--ssh-config=c", "SSH Config File [Required]") do |h|
+    options[:ssh_config] = h
   end
   opts.on("-t", "--team-count=t", Integer, "Team count [Default: #{options[:team_count]}]") do |t|
     options[:team_count] = t
@@ -65,6 +68,7 @@ begin
     # Tokens are only needed for apply action
     raise "Error: Missing option: api_token" unless options[:api_token]
     raise "Error: Missing option: search_api_token" unless options[:search_api_token]
+    raise "Error: Missing option: ssh_config" unless options[:ssh_config]
   end
   unless options[:users_per_team] >= options[:apps_per_team]
     raise "Error: Number of users number must greater or equal to number of applications (#{options[:apps_per_team]})"

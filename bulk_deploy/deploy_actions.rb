@@ -30,6 +30,7 @@ class DeployActions
     host_suffix       = @options[:host_suffix]
     api_token         = @options[:api_token]
     search_api_token  = @options[:search_api_token]
+    ssh_config        = @options[:ssh_config]
     team_count        = @options[:team_count]
     apps_per_team     = @options[:apps_per_team]
     users_per_team    = @options[:users_per_team]
@@ -194,28 +195,37 @@ class DeployActions
         #   },
         #   units: units_per_app
         # )
-        #
-        # ################### Deploy Digital Marketplace API backend ###################
-        # dm_api_app_name = "dm-api-app-" + Time.now.to_i.to_s.reverse
-        # dm_api_service_name = "db-" + Time.now.to_i.to_s.reverse
-        # log_dict[team][users_in_team[3][:email]] = {
-        #   :app => dm_api_app_name,
-        #   :service => dm_api_service_name
-        # }
-        # deploy_client.deploy_app(
-        #   user: users_in_team[3],
-        #   app: {
-        #     name: dm_api_app_name,
-        #     dir: dm_api_app_dir,
-        #     platform: "python"
-        #   },
-        #   env_vars: {
-        #     DM_API_AUTH_TOKENS: api_token,
-        #     DM_SEARCH_API_AUTH_TOKEN: search_api_token,
-        #     DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
-        #   },
-        #   units: units_per_app
-        # )
+
+        ################### Deploy Digital Marketplace API backend ###################
+        dm_api_app_name = "dm-api-app-" + Time.now.to_i.to_s.reverse
+        dm_api_service_name = "db-" + Time.now.to_i.to_s.reverse
+        log_dict[team][users_in_team[3][:email]] = {
+          :app => dm_api_app_name,
+          :service => dm_api_service_name
+        }
+        deploy_client.deploy_app(
+          user: users_in_team[3],
+          app: {
+            name: dm_api_app_name,
+            dir: dm_api_app_dir,
+            platform: "python"
+          },
+          env_vars: {
+            DM_API_AUTH_TOKENS: api_token,
+            DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+            DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
+          },
+          units: units_per_app,
+          postgres: dm_api_service_name,
+        )
+
+        deploy_client.import_pg_dump(
+          dm_api_app_name,
+          dm_api_service_name,
+          ssh_config
+        )
+
+        api_url = "https://" + api_client.get_app_url(dm_api_app_name)
 
         ################### Deploy Digital Marketplace Supplier frontend app ###################
         dm_supplier_frontend_app_name = "dm-supplier-frontend-app-" \
@@ -234,7 +244,7 @@ class DeployActions
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
             DM_DATA_API_AUTH_TOKEN: api_token,
-            DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
+            DM_DATA_API_URL: api_url,
             DM_MANDRILL_API_KEY: "somekey",
             DM_PASSWORD_SECRET_KEY: "verySecretKey",
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
@@ -261,7 +271,7 @@ class DeployActions
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
             DM_DATA_API_AUTH_TOKEN: api_token,
-            DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
+            DM_DATA_API_URL: api_url,
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
             DM_SEARCH_API_AUTH_TOKEN: search_api_token,
             DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
@@ -286,7 +296,7 @@ class DeployActions
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
             DM_DATA_API_AUTH_TOKEN: api_token,
-            DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
+            DM_DATA_API_URL: api_url,
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
             DM_SEARCH_API_AUTH_TOKEN: search_api_token,
             DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"

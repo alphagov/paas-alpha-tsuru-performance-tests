@@ -44,7 +44,7 @@ Sample Usage
 ------------
 
 ```
-bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk apply -t 2 -n 3 -T ourtoken -S oursearchtoken
+bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk apply -t 2 -n 3 -T ourtoken -S oursearchtoken -c /path/to/ssh.config
 ```
 
 Will create 2 teams, each with 7 users and deploy 5 apps (listed above) for the each team with 3 units per app.
