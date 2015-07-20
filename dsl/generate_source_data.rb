@@ -18,7 +18,7 @@ parser = OptionParser.new do |opts|
   end
   opts.on("-l", "--log-level=l", "Log level [Default: #{options[:log_level]}]") do |l|
     options[:log_level] = l
-  end  
+  end
 end
 
 begin
@@ -121,7 +121,7 @@ apps.each do |app|
 end
 
 app_types.each do |app_type|
-    file_name = "#{app_type.name}.csv"
+    file_name = "#{app_type.name}-apps.csv"
     urls = app_type.urls
     logger.info("Write #{urls.size} URLs to file #{file_name}")
     File.open(file_name, 'w') { |f| f.write urls * "\n" }
