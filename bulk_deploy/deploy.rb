@@ -77,6 +77,8 @@ rescue Exception => e
   exit 1
 end
 
+`export SSL_CERT_FILE=$(python -m certifi)`
+
 deploy_actions = DeployActions.new(options)
 
 case action
