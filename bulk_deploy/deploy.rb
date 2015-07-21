@@ -23,11 +23,11 @@ parser = OptionParser.new do |opts|
   opts.on("-h", "--host-suffix=h", "Host suffix [Required]") do |h|
     options[:host_suffix] = h
   end
-  opts.on("-at", "--api-token=at", "API token [Required]") do |h|
-    options[:api_token] = h
+  opts.on("-T", "--api-token=T", "API token [Required]") do |t|
+    options[:api_token] = t
   end
-  opts.on("-st", "--search-api-token=at", "Search API token [Required]") do |h|
-    options[:search_api_token] = h
+  opts.on("-S", "--search-api-token=S", "Search API token [Required]") do |s|
+    options[:search_api_token] = s
   end
   opts.on("-t", "--team-count=t", Integer, "Team count [Default: #{options[:team_count]}]") do |t|
     options[:team_count] = t
@@ -51,10 +51,21 @@ end
 
 begin
   parser.parse!
+
+  if ARGV.size != 1
+    puts parser
+    exit 1
+  else
+    action = ARGV[0]
+  end
+
   raise "Error: Missing option: environment" unless options[:environment]
   raise "Error: Missing option: host_suffix" unless options[:host_suffix]
-  raise "Error: Missing option: api_token" unless options[:api_token]
-  raise "Error: Missing option: search_api_token" unless options[:search_api_token]
+  if action == "apply"
+    # Tokens are only needed for apply action
+    raise "Error: Missing option: api_token" unless options[:api_token]
+    raise "Error: Missing option: search_api_token" unless options[:search_api_token]
+  end
   unless options[:users_per_team] >= options[:apps_per_team]
     raise "Error: Number of users number must greater or equal to number of applications (#{options[:apps_per_team]})"
   end
@@ -64,14 +75,6 @@ rescue Exception => e
   puts e
   puts parser
   exit 1
-end
-
-
-if ARGV.size != 1
-  puts parser
-  exit 1
-else
-  action = ARGV[0]
 end
 
 deploy_actions = DeployActions.new(options)
