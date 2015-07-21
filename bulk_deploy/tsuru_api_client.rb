@@ -28,7 +28,6 @@ class TsuruAPIClient
     # Set SSL flag to true if protocol is HTTPS
     if protocol == "https://"
       @http.use_ssl = true
-      @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     end
 
     @logger = logger
