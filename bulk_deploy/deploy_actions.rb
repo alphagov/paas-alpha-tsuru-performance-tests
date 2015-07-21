@@ -26,13 +26,15 @@ class DeployActions
   end
 
   def apply()
-    environment    = @options[:environment]
-    host_suffix    = @options[:host_suffix]
-    team_count     = @options[:team_count]
-    apps_per_team  = @options[:apps_per_team]
-    users_per_team = @options[:users_per_team]
-    units_per_app  = @options[:units_per_app]
-    state_file     = @options[:state_file]
+    environment       = @options[:environment]
+    host_suffix       = @options[:host_suffix]
+    api_token         = @options[:api_token]
+    search_api_token  = @options[:search_api_token]
+    team_count        = @options[:team_count]
+    apps_per_team     = @options[:apps_per_team]
+    users_per_team    = @options[:users_per_team]
+    units_per_app     = @options[:units_per_app]
+    state_file        = @options[:state_file]
 
     tsuru_home = '/tmp/tsuru_tmp'
     FileUtils.rm_rf(tsuru_home)
@@ -188,7 +190,7 @@ class DeployActions
         #     platform: "python"
         #   },
         #   env_vars: {
-        #     DM_SEARCH_API_AUTH_TOKENS: "oursearchtoken",
+        #     DM_SEARCH_API_AUTH_TOKENS: search_api_token,
         #   },
         #   units: units_per_app
         # )
@@ -208,8 +210,8 @@ class DeployActions
         #     platform: "python"
         #   },
         #   env_vars: {
-        #     DM_API_AUTH_TOKENS: "ourtoken",
-        #     DM_SEARCH_API_AUTH_TOKEN: "CHbDLQtMvKoAuAtT8GM6vrdGGC",
+        #     DM_API_AUTH_TOKENS: api_token,
+        #     DM_SEARCH_API_AUTH_TOKEN: search_api_token,
         #     DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
         #   },
         #   units: units_per_app
@@ -231,12 +233,12 @@ class DeployActions
           env_vars: {
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-            DM_DATA_API_AUTH_TOKEN: "wXeLg9vQNRqdkb9kccHDzFRaNL",
+            DM_DATA_API_AUTH_TOKEN: api_token,
             DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
             DM_MANDRILL_API_KEY: "somekey",
             DM_PASSWORD_SECRET_KEY: "verySecretKey",
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-            DM_SEARCH_API_AUTH_TOKEN: "CHbDLQtMvKoAuAtT8GM6vrdGGC",
+            DM_SEARCH_API_AUTH_TOKEN: search_api_token,
             DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
           },
           units: units_per_app
@@ -258,10 +260,10 @@ class DeployActions
           env_vars: {
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-            DM_DATA_API_AUTH_TOKEN: "wXeLg9vQNRqdkb9kccHDzFRaNL",
+            DM_DATA_API_AUTH_TOKEN: api_token,
             DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-            DM_SEARCH_API_AUTH_TOKEN: "CHbDLQtMvKoAuAtT8GM6vrdGGC",
+            DM_SEARCH_API_AUTH_TOKEN: search_api_token,
             DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
           },
           units: units_per_app
@@ -283,10 +285,10 @@ class DeployActions
           env_vars: {
             DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
             DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-            DM_DATA_API_AUTH_TOKEN: "wXeLg9vQNRqdkb9kccHDzFRaNL",
+            DM_DATA_API_AUTH_TOKEN: api_token,
             DM_DATA_API_URL: "https://preview-api.development.digitalmarketplace.service.gov.uk",
             DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-            DM_SEARCH_API_AUTH_TOKEN: "CHbDLQtMvKoAuAtT8GM6vrdGGC",
+            DM_SEARCH_API_AUTH_TOKEN: search_api_token,
             DM_SEARCH_API_URL: "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
           },
           units: units_per_app
