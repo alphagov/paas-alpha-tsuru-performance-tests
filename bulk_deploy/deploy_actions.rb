@@ -91,7 +91,7 @@ class DeployActions
 
     # Clone Digital Marketplace Apps
     @logger.info("Clone Digital Marketplace Search API application")
-    dm_search_api_app_repository = "https://github.com/RichardKnop/digitalmarketplace-search-api.git"
+    dm_search_api_app_repository = "https://github.com/alphagov/multicloud-digitalmarketplace-search-api.git"
     dm_search_api_app_dir = "#{tsuru_home}/dm-search-api-app"
     unless File.exist? dm_search_api_app_dir
       system "git clone #{dm_search_api_app_repository} #{dm_search_api_app_dir}"
@@ -100,7 +100,7 @@ class DeployActions
     end
 
     @logger.info("Clone Digital Marketplace API application")
-    dm_api_app_repository = "https://github.com/mtekel/digitalmarketplace-api.git"
+    dm_api_app_repository = "https://github.com/alphagov/multicloud-digitalmarketplace-api.git"
     dm_api_app_dir = "#{tsuru_home}/dm-api-app"
     unless File.exist? dm_api_app_dir
       system "git clone #{dm_api_app_repository} #{dm_api_app_dir}"
@@ -109,7 +109,7 @@ class DeployActions
     end
 
     @logger.info("Clone Digital Marketplace Supplier application")
-    dm_supplier_frontend_app_repository = "https://github.com/mtekel/digitalmarketplace-supplier-frontend.git"
+    dm_supplier_frontend_app_repository = "https://github.com/alphagov/multicloud-digitalmarketplace-supplier-frontend.git"
     dm_supplier_frontend_app_dir = "#{tsuru_home}/dm-supplier-frontend-app"
     unless File.exist? dm_supplier_frontend_app_dir
       system "git clone #{dm_supplier_frontend_app_repository} #{dm_supplier_frontend_app_dir}"
@@ -118,7 +118,7 @@ class DeployActions
     end
 
     @logger.info("Clone Digital Marketplace Buyer application")
-    dm_buyer_frontend_app_repository = "https://github.com/mtekel/digitalmarketplace-buyer-frontend.git"
+    dm_buyer_frontend_app_repository = "https://github.com/alphagov/multicloud-digitalmarketplace-buyer-frontend.git"
     dm_buyer_frontend_app_dir = "#{tsuru_home}/dm-buyer-frontend-app"
     unless File.exist? dm_buyer_frontend_app_dir
       system "git clone #{dm_buyer_frontend_app_repository} #{dm_buyer_frontend_app_dir}"
@@ -127,7 +127,7 @@ class DeployActions
     end
 
     @logger.info("Clone Digital Marketplace Admin application")
-    dm_admin_frontend_app_repository = "https://github.com/mtekel/digitalmarketplace-admin-frontend.git"
+    dm_admin_frontend_app_repository = "https://github.com/alphagov/multicloud-digitalmarketplace-admin-frontend.git"
     dm_admin_frontend_app_dir = "#{tsuru_home}/dm-admin-frontend-app"
     unless File.exist? dm_admin_frontend_app_dir
       system "git clone #{dm_admin_frontend_app_repository} #{dm_admin_frontend_app_dir}"
