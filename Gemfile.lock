@@ -25,6 +25,7 @@ GEM
       nokogiri
       rest-client
     ruby-progressbar (1.7.5)
+    yajl-ruby (1.2.1)
 
 PLATFORMS
   ruby
@@ -33,3 +34,7 @@ DEPENDENCIES
   net-ssh
   rubocop
   ruby-jmeter
+  yajl-ruby
+
+BUNDLED WITH
+   1.10.5
