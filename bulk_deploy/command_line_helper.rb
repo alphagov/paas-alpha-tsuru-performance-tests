@@ -39,6 +39,7 @@ class CommandLineHelper
     $stdout.puts "Executing: #{@env.map { |k,v| "#{k}='#{v}'" }.join(' ')} #{cmd.join(' ')}" if @options[:verbose]
 
     @in_fd, @out_fd, @err_fd, @wait_thread = Open3.popen3(@env, *cmd)
+    @in_fd.close if @options[:close_stdin]
 
     # Print standard out end error as they receive content
     @tout = Thread.new do
