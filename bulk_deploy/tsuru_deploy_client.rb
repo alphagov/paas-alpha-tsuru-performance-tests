@@ -1,5 +1,6 @@
 require 'fileutils'
 require 'digest/sha1'
+require 'aws-sdk'
 
 class TsuruDeployClient
 
@@ -78,15 +79,41 @@ class TsuruDeployClient
   end
 
   def import_pg_dump(app_name, postgres_instance_name, ssh_config)
-    system "python -c \"import boto;boto.connect_s3().get_bucket('digital-marketplace-stuff').get_key('full.dump').get_contents_to_filename('#{@tsuru_home}/full.dump')\""
+    s3 = Aws::S3::Client.new
+
+    # Download database dump from S3
+    File.open(File.join(@tsuru_home, "full.dump"), "wb") do |file|
+      reap = s3.get_object(
+        {
+          bucket:"digital-marketplace-stuff",
+          key: "full.dump"
+        },
+        target: file
+      )
+    end
+
     postgres_ip = @api_client.get_env_vars(app_name)["PG_HOST"]
-    db_name = canonicalize_db_name(postgres_instance_name)
-    scp_cmd = "scp -F #{ssh_config} #{@tsuru_home}/full.dump #{postgres_ip}:~/full.dump"
+    db_name = @api_client.get_env_vars(app_name)["PG_DATABASE"]
+
+    # Create a symbolic link to ssh.config in our temporary directory
+    if !File.exists?("#{@tsuru_home}/ssh.config")
+      if !system("ln -s #{ssh_config} #{@tsuru_home}/ssh.config")
+        raise "Failed to create a symbolic link to ssh.config file"
+      end
+    end
+
+    # Use scp to upload the database dump to posgres box
+    scp_cmd = "cd #{@tsuru_home} && scp -F ssh.config full.dump #{postgres_ip}:~/full.dump"
     self.logger.info("SCP postgres dump file over: #{scp_cmd}")
-    system scp_cmd
-    restore_cmd = "ssh -F #{ssh_config} #{postgres_ip} 'pg_restore -a -U postgres -d #{db_name} -Fc ~/full.dump'"
+    if !system(scp_cmd)
+      raise "Failed to upload database dump via scp"
+    end
+
+    # Run pg_restore on the postgres box to load the data
+    restore_cmd = "cd #{@tsuru_home} && ssh -F ssh.config #{postgres_ip} "\
+                  "'pg_restore -a -U postgres -d #{db_name} -Fc ~/full.dump'"
     self.logger.info("Let's restore the data from backup: #{restore_cmd}")
-    system restore_cmd
+    system(restore_cmd)
   end
 
   private
@@ -113,12 +140,6 @@ class TsuruDeployClient
         raise "Failed to remove key"
       end
     end
-  end
-
-  # See https://github.com/tsuru/postgres-api/blob/master/postgresapi/models.py#L45
-  def canonicalize_db_name(name)
-    name += Digest::SHA1.hexdigest(name)[0..9]
-    return name.gsub(/-/, '_')
   end
 
 end

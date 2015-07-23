@@ -24,7 +24,7 @@ class DeployActions
         raise "Error: Unknown log level: #{options[:log_level]}"
     end
 
-    @tsuru_home = '/tmp/tsuru_tmp'
+    @tsuru_home = Dir.mktmpdir
     ENV["HOME"] = @tsuru_home
   end
 
@@ -274,8 +274,10 @@ class DeployActions
       @logger.info("Write state file #{state_file}")
       File.open(state_file, 'w') { |file| file.write(state_string) }
     end
-  end
 
+  ensure
+    FileUtils.remove_entry @tsuru_home
+  end
 
   def destroy()
     environment    = @options[:environment]

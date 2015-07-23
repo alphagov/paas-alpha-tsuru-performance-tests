@@ -43,6 +43,16 @@ In the future we want to improve this script to deploy our own DM backend apps w
 Sample Usage
 ------------
 
+Make sure you have these in your profile:
+
+```
+export AWS_ACCESS_KEY_ID=hello
+export AWS_SECRET_ACCESS_KEY=howareyou
+export AWS_REGION=eu-west-1
+```
+
+If you don't, add them to `~/.bash_profile` and run `source ~/.bash_profile`.
+
 ```
 bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk -t 2 -n 3 -T ourtoken -S oursearchtoken -c /path/to/ssh.config apply
 ```
