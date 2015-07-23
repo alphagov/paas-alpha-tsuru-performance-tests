@@ -36,7 +36,7 @@ end
 class GitCommandLine < CommandLineHelper
 
   def initialize(path, env = {}, options = {})
-    super(env, options)
+    super(env, options.merge({close_stdin: true}))
     @path = path
   end
 
