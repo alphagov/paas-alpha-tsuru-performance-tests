@@ -13,8 +13,8 @@ Usage: bundle exec deploy.rb action [options]
 Example: bundle exec deploy.rb --environment perf-env --host-suffix tsuru2.paas.alphagov.co.uk apply
     -e, --environment=e              Environment [Required]
     -h, --host-suffix=h              Host suffix [Required]
-    -at, --api-token=at              API Token [Required]
-    -st, --search-api-token=st       Search API Token [Required]
+    -T, --api-token=T                API Token [Required]
+    -S, --search-api-token=S         Search API Token [Required]
     -t, --team-count=t               Team count [Default: 2]
     -u, --users-per-team=u           Users per team [Default: 7]
     -a, --apps-per-team=a            Applications per team [Default: 5]
@@ -43,8 +43,18 @@ In the future we want to improve this script to deploy our own DM backend apps w
 Sample Usage
 ------------
 
+Make sure you have these in your profile:
+
 ```
-bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk apply -t 2 -n 3 -T ourtoken -S oursearchtoken
+export AWS_ACCESS_KEY_ID=hello
+export AWS_SECRET_ACCESS_KEY=howareyou
+export AWS_REGION=eu-west-1
+```
+
+If you don't, add them to `~/.bash_profile` and run `source ~/.bash_profile`.
+
+```
+bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk -t 2 -n 3 -T ourtoken -S oursearchtoken -c /path/to/ssh.config apply
 ```
 
 Will create 2 teams, each with 7 users and deploy 5 apps (listed above) for the each team with 3 units per app.

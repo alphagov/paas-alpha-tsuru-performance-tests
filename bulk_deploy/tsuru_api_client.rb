@@ -197,6 +197,10 @@ class TsuruAPIClient
     )
   end
 
+  def get_app_url(app_name)
+    get_app_info(app_name)["ip"]
+  end
+
   def add_units(units, app_name)
     objects = request_json(
       method: :put,
@@ -257,10 +261,18 @@ class TsuruAPIClient
   end
 
   def get_env_vars(app_name)
-    request_json(
+    hash = {}
+
+    env_vars = request_json(
       method: :get,
       path: "/apps/#{app_name}/env",
     )
+
+    for env_var_arr in env_vars
+      hash[env_var_arr["name"]] = env_var_arr["value"]
+    end
+
+    return hash
   end
 
   def unset_env_var(app_name, key, value)
