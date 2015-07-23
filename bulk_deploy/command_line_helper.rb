@@ -2,7 +2,7 @@ require 'open3'
 
 # Generic wrapper around the CommandLine
 class CommandLineHelper
-  attr_reader :exit_status, :stderr, :stdout, :last_command, :env
+  attr_reader :exit_status, :stderr, :stdout, :stdouterr, :last_command, :env
 
   def initialize(env = {}, options = {})
     @env = env
@@ -34,6 +34,7 @@ class CommandLineHelper
     @exit_status=nil
     @stderr = ''
     @stdout = ''
+    @stdouterr = ''
 
     $stdout.puts "Executing: #{@env.map { |k,v| "#{k}='#{v}'" }.join(' ')} #{cmd.join(' ')}" if @options[:verbose]
 
@@ -43,12 +44,14 @@ class CommandLineHelper
     @tout = Thread.new do
       @out_fd.each {|l|
         $stdout.puts "stdout: #{l}" if @options[:verbose]
+        @stdouterr << "stdout: #{l}"
         @stdout << l
       }
     end
     @terr = Thread.new do
       @err_fd.each {|l|
         $stderr.puts "stderr: #{l}" if @options[:verbose]
+        @stdouterr << "stderr: #{l}"
         @stderr << l
       }
     end
