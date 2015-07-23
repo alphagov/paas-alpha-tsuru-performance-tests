@@ -1,0 +1,79 @@
+$LOAD_PATH << File.join(File.dirname(__FILE__))
+require 'rake'
+require 'logger'
+require 'git_helper'
+
+APPS = [
+  {
+    app: "example-java-jetty",
+    repo: "https://github.com/alphagov/example-java-jetty"
+  },
+  {
+    app: "flask-sqlalchemy-postgres-heroku-example",
+    repo: "https://github.com/alphagov/flask-sqlalchemy-postgres-heroku-example"
+  },
+  {
+    app: "digitalmarketplace-api",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-api"
+  },
+  {
+    app: "digitalmarketplace-search-api",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-search-api"
+  },
+  {
+    app: "digitalmarketplace-supplier-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-supplier-frontend"
+  },
+  {
+    app: "digitalmarketplace-buyer-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-buyer-frontend"
+  },
+  {
+    app: "digitalmarketplace-admin-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-admin-frontend"
+  }
+]
+
+WORKING_DIR=ENV["workdir"] || "/tmp/workdir"
+REPOS_DIR=File.join(WORKING_DIR, "repos")
+VERBOSE=ENV["verbose"] || false
+LOGGER = Logger.new(STDOUT)
+LOGGER.level = Logger::INFO
+
+task :debug do
+  LOGGER.level = Logger::DEBUG
+end
+
+
+namespace :workdir do
+  task :create_workdir do
+    FileUtils.mkdir_p WORKING_DIR
+  end
+  task :clean do
+    FileUtils.rm_rf WORKING_DIR
+  end
+end
+
+namespace :clone do |ns|
+  APPS.each { |entry|
+    task "clone_#{entry[:app]}" do |t|
+
+      repo_dir = File.join(REPOS_DIR, entry[:app])
+      git_command = GitCommandLine.new(repo_dir, {}, { :verbose => VERBOSE })
+      if (File.directory?(repo_dir))
+        LOGGER.debug "#{t}: Updating #{entry[:repo]} in #{repo_dir}"
+        git_command.pull
+        raise git_command.stdouterr if git_command.exit_status != 0
+      else
+        LOGGER.debug "#{t}: Cloning #{entry[:repo]} in #{repo_dir}"
+        git_command.clone(entry[:repo])
+        raise git_command.stdouterr if git_command.exit_status != 0
+      end
+    end
+  }
+  multitask :all => ns.tasks do
+    LOGGER.info "All repos cloned and updated."
+  end
+end
+
+
