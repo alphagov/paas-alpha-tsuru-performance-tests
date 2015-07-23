@@ -61,8 +61,6 @@ class TsuruAPIService
     return team_users
   end
 
-  private
-
   def create_team(team)
     # Create a team
     unless self.api_client.list_teams().include? team

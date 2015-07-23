@@ -2,6 +2,8 @@ $LOAD_PATH << File.join(File.dirname(__FILE__))
 require 'rake'
 require 'logger'
 require 'git_helper'
+require 'tsuru_api_client'
+require 'tsuru_api_service'
 
 APPS = [
   {
@@ -34,11 +36,30 @@ APPS = [
   }
 ]
 
-WORKING_DIR=ENV["workdir"] || "/tmp/workdir"
-REPOS_DIR=File.join(WORKING_DIR, "repos")
-VERBOSE=ENV["verbose"] || false
+WORKING_DIR = ENV["workdir"] || "/tmp/workdir"
+REPOS_DIR = File.join(WORKING_DIR, "repos")
+VERBOSE = ENV["verbose"] || false
 LOGGER = Logger.new(STDOUT)
 LOGGER.level = Logger::INFO
+
+TSURU_HOME=WORKING_DIR
+
+ADMIN_USER = ENV["admin_user"] || 'administrator@gds.tsuru.gov'
+ADMIN_PASS = ENV["admin_pass"] || raise("Must pass admin_pass=...")
+
+
+API_CLIENT = TsuruAPIClient.new(
+  logger: LOGGER,
+  environment: ENV['environment'] || raise("Must pass environment=..."),
+  host: ENV['host'] || raise("Must pass host=...")
+)
+
+API_SERVICE = TsuruAPIService.new(
+  logger: LOGGER,
+  api_client: API_CLIENT,
+  tsuru_home: TSURU_HOME
+)
+
 
 task :debug do
   LOGGER.level = Logger::DEBUG
@@ -74,6 +95,50 @@ namespace :clone do |ns|
   multitask :all => ns.tasks do
     LOGGER.info "All repos cloned and updated."
   end
+end
+
+namespace :tsuru do
+  task :login_admin do
+    API_CLIENT.login('administrator@gds.tsuru.gov', 'admin123')
+  end
+end
+
+NUM_TEAMS=1
+NUM_USERS=10
+namespace :teams do |ns|
+  (1..NUM_TEAMS).each { |team_i|
+    teamname = "bulkt#{team_i}"
+    namespace teamname do
+      namespace_name = "teams:#{teamname}" # I did not find a better way
+      namespace :users do |ns|
+        (1..NUM_USERS).each { |user_i|
+          username="user#{user_i}@#{teamname}.site.com"
+          namespace username do
+            task :create => [ "tsuru:login_admin" ] do
+              LOGGER.info("Create user #{username}")
+              API_SERVICE.create_user(username, "password", teamname)
+            end
+            task :remove => [ "tsuru:login_admin" ] do
+              puts "remove user #{username}"
+              sleep 1
+            end
+          end
+        }
+        multitask :create_all => ns.tasks.select{|x| x.to_s.end_with? "create"}
+        multitask :remove_all => ns.tasks.select{|x| x.to_s.end_with? "remove"}
+      end
+      task :create => [ "tsuru:login_admin" ] do |t|
+        LOGGER.info("Create team #{teamname}")
+        API_SERVICE.create_team(teamname)
+        ns["#{namespace_name}:users:create_all"].invoke
+      end
+      task :remove => [ "tsuru:login_admin", ns["#{namespace_name}:users:remove_all" ] ] do
+        puts "remove team #{team_i}"
+      end
+    end
+  }
+  multitask :create_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:create/ }
+  multitask :remove_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:remove/}
 end
 
 
