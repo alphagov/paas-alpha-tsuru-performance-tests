@@ -77,6 +77,7 @@ class AppType
           app_urls << "http://#{app}.#{@@dns_suffix}#{path}"
         }
       else
+
         app_urls << "http://#{app}.#{@@dns_suffix}/"
       end
     }
@@ -85,13 +86,27 @@ class AppType
 
 end
 
+
+gov_paths = []
+File.open("gov_uk_paths.txt", "r") do |f|
+  gov_paths = f.readlines.each {|l| l.chomp!}
+end
+
+
+dm_buyer_paths = []
+File.open("dm_buyer_paths.txt", "r") do |f|
+  dm_buyer_paths = f.readlines.each {|l| l.chomp!}
+end
+
+
 AppType.dns_suffix = "#{environment}-hipache.#{host_suffix}"
 
 app_types = []
 app_types << AppType.new('java', 'java-app-')
 app_types << AppType.new('flask', 'flask-app-')
+app_types << AppType.new('gov_uk', 'gov-uk-', gov_paths)
 app_types << AppType.new('dm-supplier-frontend', 'dm-supplier-frontend-app-', ['/suppliers'])
-app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-')
+app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-', dm_buyer_paths)
 app_types << AppType.new('dm-admin-frontend', 'dm-admin-frontend-app-', ['/admin'])
 app_types << AppType.new('dm-search-api', 'dm-search-api-app-')
 app_types << AppType.new('dm-api', 'dm-api-app-')
@@ -109,6 +124,7 @@ api_client.login 'administrator@gds.tsuru.gov', 'admin123'
 logger.info("Get list of applications")
 apps = api_client.list_apps
 
+apps = ['dm-buyer-frontend-app-1', 'dm-buyer-frontend-app-2']
 logger.info("Found #{apps.size} applications")
 
 logger.info("Sort applications")
@@ -118,6 +134,7 @@ apps.each do |app|
     logger.debug "Add application #{app} to type #{match.name}"
     match.add_app app
 end
+
 
 app_types.each do |app_type|
     file_name = "#{app_type.name}-apps.csv"
