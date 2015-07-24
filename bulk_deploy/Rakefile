@@ -185,11 +185,18 @@ namespace "apps" do
   namespace "flask-app" do
     (1..NUM_TEAMS).each { |team_i|
       teamname = gen_team_name(team_i)
+      username=gen_username(teamname, 1)
       appname = "flask-app-#{teamname}"
       servicename = "db-#{appname}"
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
         task "deploy" => [ "tsuru:login_admin" ]  do
+          user = {
+            email: username,
+            password: "password",
+            team: teamname,
+            ssh_wrapper: ssh_wrapper_for_user(username)
+          }
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 1),
             app: {
@@ -200,6 +207,22 @@ namespace "apps" do
             postgres: servicename,
             git: true,
             units: UNITS_PER_APP
+          )
+        end
+        task "remove" => [ "tsuru:login_admin" ] do
+          user = {
+            email: username,
+            password: "password",
+            team: teamname,
+            ssh_wrapper: ssh_wrapper_for_user(username)
+          }
+          DEPLOY_CLIENT.remove_app(
+            user: user,
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
+              platform: "python"
+            },
           )
         end
       end

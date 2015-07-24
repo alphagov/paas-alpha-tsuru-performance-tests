@@ -78,6 +78,22 @@ class TsuruDeployClient
     end
   end
 
+  def remove_app(user:, app:, postgres: '')
+    self.logger.info("Going to remove #{app[:name]}")
+    self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
+    new_api_client = api_client.clone
+    new_api_client.login(user[:email], user[:password])
+
+    if not new_api_client.list_apps().include? app[:name]
+      self.logger.warn("Application #{app[:name]} does not exist " \
+        "on the platform #{app[:platform]}")
+      return
+    end
+
+    @tsuru_command.login(user[:email], user[:password])
+    app_remove(app[:name])
+  end
+
   def import_pg_dump(app_name, postgres_instance_name, ssh_config)
     # Download database dump from S3
     File.open(File.join(@tsuru_home, "full.dump"), "wb") do |file|
@@ -116,6 +132,11 @@ class TsuruDeployClient
     if !system("tsuru app-deploy * -a #{app_name}")
       raise "Failed to deploy the app"
     end
+  end
+
+  def app_remove(app_name)
+    @tsuru_command.app_remove(app_name)
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
   end
 
   def git_deploy(path, git_repo, ssh_wrapper_path)
