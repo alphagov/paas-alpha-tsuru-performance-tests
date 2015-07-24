@@ -64,8 +64,8 @@ class TsuruDeployClient
       self.logger.info("Deploy #{app[:name]} via git")
       git_deploy(
         app[:dir],
-        self.api_client.get_app_repository(app[:name]),
-        user[:key]
+        new_api_client.get_app_repository(app[:name]),
+        user[:ssh_wrapper]
       )
     else
       self.logger.info("Deploy #{app[:name]} via app-deploy")
@@ -118,21 +118,15 @@ class TsuruDeployClient
     end
   end
 
-  def git_deploy(path, git_repo, key)
+  def git_deploy(path, git_repo, ssh_wrapper_path)
     FileUtils.cd(path)
-    begin
-      if !system("ssh-add #{key}")
-        raise "Failed to add key"
-      end
-      if !system("GIT_SSH_COMMAND='ssh -i #{key} -F " +
-        "#{@tsuru_home}/.ssh/config' git push #{git_repo} master")
-        raise "Failed to deploy the app"
-      end
-    ensure
-      if !system("ssh-add -d #{key}")
-        raise "Failed to remove key"
-      end
-    end
+    git_command = GitCommandLine.new(path, {
+      'HOME' => @tsuru_home,
+      'GIT_SSH' => ssh_wrapper_path},
+      { :verbose => ENV['VERBOSE'] })
+
+    git_command.push(git_repo)
+    raise git_command.stderr if git_command.exit_status != 0
   end
 
 end
