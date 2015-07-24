@@ -54,7 +54,7 @@ export AWS_REGION=eu-west-1
 If you don't, add them to `~/.bash_profile` and run `source ~/.bash_profile`.
 
 ```
-bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk -t 2 -n 3 -T ourtoken -S oursearchtoken -c /path/to/ssh.config apply
+bundle exec ruby deploy.rb -e richard -h tsuru2.paas.alphagov.co.uk -t 2 -n 3 -T ourtoken -S oursearchtoken
 ```
 
 Will create 2 teams, each with 7 users and deploy 5 apps (listed above) for the each team with 3 units per app.

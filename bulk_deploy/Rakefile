@@ -190,7 +190,7 @@ namespace "apps" do
       servicename = "db-#{appname}"
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
-        task "deploy" => [ "tsuru:login_admin" ]  do
+        task "deploy" => [ "tsuru:login_admin" ] do
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 1),
             app: {
@@ -222,7 +222,7 @@ namespace "apps" do
       appname = "java-app-#{teamname}"
       namespace teamname do
         LOGGER.info("Deploying #{appname}")
-        task "deploy" => [ "tsuru:login_admin" ]  do
+        task "deploy" => [ "tsuru:login_admin" ] do
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 2),
             app: {
@@ -236,9 +236,30 @@ namespace "apps" do
       end
     }
   end
-  # namespace "dm-api"
-  #   (1..NUM_TEAMS).each { |team_i|
-  #
-  #   }
-  # end
+  namespace "dm-api" do
+    (1..NUM_TEAMS).each { |team_i|
+      teamname = gen_team_name(team_i)
+      appname = "dm-api-#{teamname}"
+      servicename = "db-#{appname}"
+      namespace teamname do
+        LOGGER.info("Deploying #{appname}")
+        task "deploy" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.deploy_app(
+            user: gen_user_hash(teamname, 3),
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "digitalmarketplace-api"),
+              platform: "python"
+            },
+            postgres: servicename,
+            units: UNITS_PER_APP
+          )
+          DEPLOY_CLIENT.import_pg_dump(
+            appname,
+            servicename,
+          )
+        end
+      end
+    }
+  end
 end

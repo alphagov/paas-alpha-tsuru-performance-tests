@@ -94,7 +94,7 @@ class TsuruDeployClient
     app_remove(app[:name])
   end
 
-  def import_pg_dump(app_name, postgres_instance_name, ssh_config)
+  def import_pg_dump(app_name, postgres_instance_name)
     # Download database dump from S3
     File.open(File.join(@tsuru_home, "full.dump"), "wb") do |file|
       reap = Aws::S3::Client.new.get_object(
@@ -108,7 +108,8 @@ class TsuruDeployClient
 
     postgres_ip = @api_client.get_env_vars(app_name)["PG_HOST"]
     db_name = @api_client.get_env_vars(app_name)["PG_DATABASE"]
-    ssh_config_dir = File.dirname(File.expand_path(ssh_config))
+    # Ugly hack incoming!
+    ssh_config_dir = `find ~ -name tsuru-ansible | head -n 1 | tr -d '\n'`
 
     # Use scp to upload the database dump to posgres box
     scp_cmd = "cd #{ssh_config_dir} && scp -F ssh.config "\

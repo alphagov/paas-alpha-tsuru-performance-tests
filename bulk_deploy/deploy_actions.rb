@@ -169,8 +169,7 @@ class DeployActions
 
         @deploy_client.import_pg_dump(
           dm_api_app_name,
-          dm_api_service_name,
-          @options[:ssh_config]
+          dm_api_service_name
         )
 
         api_url = "https://" + @api_client.get_app_url(dm_api_app_name)
