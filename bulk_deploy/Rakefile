@@ -244,6 +244,9 @@ namespace "apps" do
       namespace teamname do
         LOGGER.info("Deploying #{appname}")
         task "deploy" => [ "tsuru:login_admin" ] do
+          api_token = "ourtoken"
+          search_api_token = "oursearchtoken"
+          search_api_url = "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 3),
             app: {
@@ -251,12 +254,54 @@ namespace "apps" do
               dir: File.join(REPOS_DIR, "digitalmarketplace-api"),
               platform: "python"
             },
+            env_vars: {
+              DM_API_AUTH_TOKENS: api_token,
+              DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+              DM_SEARCH_API_URL: search_api_url,
+            },
             postgres: servicename,
             units: UNITS_PER_APP
           )
           DEPLOY_CLIENT.import_pg_dump(
             appname,
             servicename,
+          )
+          # Return API URL
+          "https://" + API.get_app_url(appname)
+        end
+      end
+    }
+  end
+  namespace "dm-supplier-frontend" do
+    (1..NUM_TEAMS).each { |team_i|
+      teamname = gen_team_name(team_i)
+      appname = "dm-supplier-frontend-#{teamname}"
+      namespace teamname do
+        LOGGER.info("Deploying #{appname}")
+        task "deploy" => [ "apps:dm-api:bulkt#{team_i}:deploy" ] do
+          api_token = "ourtoken"
+          search_api_token = "oursearchtoken"
+          api_url = API_CLIENT.get_app_url("dm-api-#{teamname}")
+          search_api_url = "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
+          DEPLOY_CLIENT.deploy_app(
+            user: gen_user_hash(teamname, 5),
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "digitalmarketplace-supplier-frontend"),
+              platform: "python"
+            },
+            env_vars: {
+              DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
+              DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
+              DM_DATA_API_AUTH_TOKEN: api_token,
+              DM_DATA_API_URL: api_url,
+              DM_MANDRILL_API_KEY: "somekey",
+              DM_PASSWORD_SECRET_KEY: "verySecretKey",
+              DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
+              DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+              DM_SEARCH_API_URL: search_api_url
+            },
+            units: UNITS_PER_APP
           )
         end
       end
