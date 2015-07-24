@@ -166,7 +166,7 @@ namespace "apps" do
       servicename = "db-#{appname}"
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
-        task "deploy" do
+        task "deploy" => [ "tsuru:login_admin" ]  do
           username = "user1@#{teamname}.site.com"
           user = {
             email: username,
