@@ -4,6 +4,7 @@ require 'logger'
 require 'git_helper'
 require 'tsuru_api_client'
 require 'tsuru_api_service'
+require 'tsuru_deploy_client'
 
 APPS = [
   {
@@ -47,11 +48,14 @@ TSURU_HOME=WORKING_DIR
 ADMIN_USER = ENV["admin_user"] || 'administrator@gds.tsuru.gov'
 ADMIN_PASS = ENV["admin_pass"] || raise("Must pass admin_pass=...")
 
+UNITS_PER_APP = ENV["units_per_app"] || 3
+ENVIRONMENT = ENV['environment'] || raise("Must pass environment=...")
+TSURU_HOST = ENV['host'] || raise("Must pass host=...")
 
 API_CLIENT = TsuruAPIClient.new(
   logger: LOGGER,
-  environment: ENV['environment'] || raise("Must pass environment=..."),
-  host: ENV['host'] || raise("Must pass host=...")
+  environment: ENVIRONMENT,
+  host: TSURU_HOST
 )
 
 API_SERVICE = TsuruAPIService.new(
@@ -60,6 +64,13 @@ API_SERVICE = TsuruAPIService.new(
   tsuru_home: TSURU_HOME
 )
 
+DEPLOY_CLIENT = TsuruDeployClient.new(
+  api_client: API_CLIENT,
+  logger: LOGGER,
+  environment: ENVIRONMENT,
+  host: TSURU_HOST,
+  tsuru_home: TSURU_HOME
+)
 
 task :debug do
   LOGGER.level = Logger::DEBUG
@@ -145,6 +156,39 @@ namespace :teams do |ns|
   }
   multitask :create_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:create/ }
   multitask :remove_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:remove/}
+end
+
+namespace "apps" do
+  namespace "flask-app" do
+    (1..NUM_TEAMS).each { |team_i|
+      teamname = "bulkt#{team_i}"
+      appname = "flask-app-#{teamname}"
+      servicename = "db-#{appname}"
+      namespace teamname do
+        LOGGER.info("Deploying #{appname} with service #{servicename}")
+        task "deploy" do
+          username = "user1@#{teamname}.site.com"
+          user = {
+            email: username,
+            password: "password",
+            team: teamname,
+            ssh_wrapper: File.join(WORKING_DIR, "#{username}-ssh-wrapper")
+          }
+          DEPLOY_CLIENT.deploy_app(
+            user: user,
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
+              platform: "python"
+            },
+            postgres: servicename,
+            git: true,
+            units: UNITS_PER_APP
+          )
+        end
+      end
+    }
+  end
 end
 
 
