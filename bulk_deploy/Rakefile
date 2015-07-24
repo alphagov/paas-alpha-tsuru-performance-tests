@@ -117,9 +117,21 @@ end
 def gen_team_name(index)
   "bulkt#{index}"
 end
+
 def gen_username(teamname, index)
   "user#{index}@#{teamname}.site.com"
 end
+
+def gen_user_hash(teamname, index)
+  username = gen_username(teamname, 1)
+  {
+    email: username,
+    password: "password",
+    team: teamname,
+    ssh_wrapper: ssh_wrapper_for_user(username)
+  }
+end
+
 def ssh_wrapper_for_user(username)
   File.join(WORKING_DIR, "#{username}-ssh-wrapper")
 end
@@ -178,15 +190,8 @@ namespace "apps" do
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
         task "deploy" => [ "tsuru:login_admin" ]  do
-          username=gen_username(teamname, 1)
-          user = {
-            email: username,
-            password: "password",
-            team: teamname,
-            ssh_wrapper: ssh_wrapper_for_user(username)
-          }
           DEPLOY_CLIENT.deploy_app(
-            user: user,
+            user: gen_user_hash(teamname, 1),
             app: {
               name: appname,
               dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
@@ -200,7 +205,24 @@ namespace "apps" do
       end
     }
   end
+  namespace "java-app" do
+    (1..NUM_TEAMS).each { |team_i|
+      teamname = gen_team_name(team_i)
+      appname = "java-app-#{teamname}"
+      namespace teamname do
+        LOGGER.info("Deploying #{appname}")
+        task "deploy" => [ "tsuru:login_admin" ]  do
+          DEPLOY_CLIENT.deploy_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "example-java-jetty"),
+              platform: "java"
+            },
+            units: UNITS_PER_APP
+          )
+        end
+      end
+    }
+  end
 end
-
-
-
