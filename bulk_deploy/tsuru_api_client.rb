@@ -39,7 +39,6 @@ class TsuruAPIClient
     )
     @token = response["token"]
     @is_admin = response["is_admin"]
-    File.open(File.join(ENV["HOME"], ".tsuru_token"), "w") { |f| f.write(@token) }
     return @token
   end
 
