@@ -99,7 +99,7 @@ end
 
 namespace :tsuru do
   task :login_admin do
-    API_CLIENT.login('administrator@gds.tsuru.gov', 'admin123')
+    API_CLIENT.login('administrator@gds.tsuru.gov', ADMIN_PASS)
   end
 end
 
@@ -117,6 +117,12 @@ namespace :teams do |ns|
             task :create => [ "tsuru:login_admin" ] do
               LOGGER.info("Create user #{username}")
               API_SERVICE.create_user(username, "password", teamname)
+              user = {
+                email: username,
+                password: "password",
+                team: teamname
+              }
+              API_SERVICE.add_key_to_user(user)
             end
             task :remove => [ "tsuru:login_admin" ] do
               puts "remove user #{username}"
@@ -140,5 +146,6 @@ namespace :teams do |ns|
   multitask :create_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:create/ }
   multitask :remove_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:remove/}
 end
+
 
 
