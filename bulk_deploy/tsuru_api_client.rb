@@ -431,7 +431,7 @@ class TsuruAPIClient
       request["Authorization"] = "Bearer #{@token}"
     end
 
-    response = self.http.request(request)
+    response = http.request(request)
 
     # If request failed, raise exception
     if response.code >= "400"
