@@ -99,7 +99,7 @@ end
 
 namespace :tsuru do
   task :login_admin do
-    API_CLIENT.login('administrator@gds.tsuru.gov', 'admin123')
+    API_CLIENT.login('administrator@gds.tsuru.gov', ADMIN_PASS)
   end
 end
 
