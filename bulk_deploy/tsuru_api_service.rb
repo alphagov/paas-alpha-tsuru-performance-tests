@@ -89,8 +89,8 @@ class TsuruAPIService
     self.logger.info("Add public key for user #{user[:email]}")
     ssh_id_rsa_path = File.join(@tsuru_home, '.ssh', "id_rsa_#{user[:email]}")
     ssh_id_rsa_pub_path = File.join(@tsuru_home, '.ssh', "id_rsa_#{user[:email]}.pub")
-    ssh_config_file = File.join(@tsuru_home, '.ssh', 'config')
-    ssh_wrapper_path = File.join(@tsuru_home, "#{user[:email]}-ssh-wrapper")
+    ssh_config_file = File.join(@tsuru_home, '.ssh', "#{user[:email]}-config")
+    ssh_wrapper_path = user[:ssh_wrapper]
 
     # Generate a new ssh key
     SshHelper.generate_key(ssh_id_rsa_path)
