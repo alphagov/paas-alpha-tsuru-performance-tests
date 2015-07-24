@@ -22,8 +22,7 @@ class SshHelper
   # specify the configuration file we need to create a wrapper
   def self.write_ssh_wrapper(wrapper_path, config_path)
     File.open(wrapper_path, "w") do |f|
-      f.write("""
-#!/bin/bash
+      f.write("""#!/bin/bash
 ssh -F #{config_path} $@
 """)
     end
