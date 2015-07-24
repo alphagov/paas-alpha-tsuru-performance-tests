@@ -191,12 +191,6 @@ namespace "apps" do
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
         task "deploy" => [ "tsuru:login_admin" ]  do
-          user = {
-            email: username,
-            password: "password",
-            team: teamname,
-            ssh_wrapper: ssh_wrapper_for_user(username)
-          }
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 1),
             app: {
@@ -210,14 +204,8 @@ namespace "apps" do
           )
         end
         task "remove" => [ "tsuru:login_admin" ] do
-          user = {
-            email: username,
-            password: "password",
-            team: teamname,
-            ssh_wrapper: ssh_wrapper_for_user(username)
-          }
           DEPLOY_CLIENT.remove_app(
-            user: user,
+            user: gen_user_hash(teamname, 1),
             app: {
               name: appname,
               dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
@@ -236,7 +224,7 @@ namespace "apps" do
         LOGGER.info("Deploying #{appname}")
         task "deploy" => [ "tsuru:login_admin" ]  do
           DEPLOY_CLIENT.deploy_app(
-            user: gen_user_hash(teamname, 1),
+            user: gen_user_hash(teamname, 2),
             app: {
               name: appname,
               dir: File.join(REPOS_DIR, "example-java-jetty"),
@@ -248,4 +236,9 @@ namespace "apps" do
       end
     }
   end
+  # namespace "dm-api"
+  #   (1..NUM_TEAMS).each { |team_i|
+  #
+  #   }
+  # end
 end
