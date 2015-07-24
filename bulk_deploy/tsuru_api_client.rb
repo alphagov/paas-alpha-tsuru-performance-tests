@@ -22,14 +22,8 @@ class TsuruAPIClient
 
   def initialize(logger:, environment:, host:, protocol: "https://")
     # Parse the Tsuru API domain and create a HTTP client
-    uri = URI.parse(protocol + environment + "-api." + host)
-    @http = Net::HTTP.new(uri.host, uri.port)
-
-    # Set SSL flag to true if protocol is HTTPS
-    if protocol == "https://"
-      @http.use_ssl = true
-    end
-
+    @protocol = protocol
+    @uri = URI.parse(protocol + environment + "-api." + host)
     @logger = logger
   end
 
@@ -404,6 +398,17 @@ class TsuruAPIClient
     return objects
   end
 
+  def http
+    http = Net::HTTP.new(@uri.host, @uri.port)
+
+    # Set SSL flag to true if protocol is HTTPS
+    if @protocol == "https://"
+      http.use_ssl = true
+    end
+
+    http
+  end
+
   def request(method:, path:, params: {}, body: "")
     case method
     when :get
@@ -426,7 +431,7 @@ class TsuruAPIClient
       request["Authorization"] = "Bearer #{@token}"
     end
 
-    response = @http.request(request)
+    response = self.http.request(request)
 
     # If request failed, raise exception
     if response.code >= "400"
