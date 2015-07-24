@@ -108,8 +108,9 @@ class TsuruAPIService
       .gsub(/-----BEGIN PUBLIC KEY-----/, '')
       .gsub(/-----END PUBLIC KEY-----/, '')
 
-    self.api_client.login(user[:email], user[:password])
-    self.api_client.add_key(public_key)
+    new_api_client = self.api_client.clone
+    new_api_client.login(user[:email], user[:password])
+    new_api_client.add_key(public_key)
 
     user[:key] = ssh_id_rsa_path
   end
