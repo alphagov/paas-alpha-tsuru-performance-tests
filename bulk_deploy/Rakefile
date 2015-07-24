@@ -114,6 +114,10 @@ namespace :tsuru do
   end
 end
 
+def ssh_wrapper_for_user(username)
+  File.join(WORKING_DIR, "#{username}-ssh-wrapper")
+end
+
 NUM_TEAMS=1
 NUM_USERS=10
 namespace :teams do |ns|
@@ -131,7 +135,8 @@ namespace :teams do |ns|
               user = {
                 email: username,
                 password: "password",
-                team: teamname
+                team: teamname,
+                ssh_wrapper: ssh_wrapper_for_user(username)
               }
               API_SERVICE.add_key_to_user(user)
             end
@@ -172,7 +177,7 @@ namespace "apps" do
             email: username,
             password: "password",
             team: teamname,
-            ssh_wrapper: File.join(WORKING_DIR, "#{username}-ssh-wrapper")
+            ssh_wrapper: ssh_wrapper_for_user(username)
           }
           DEPLOY_CLIENT.deploy_app(
             user: user,
