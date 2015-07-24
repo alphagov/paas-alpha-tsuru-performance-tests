@@ -1,6 +1,7 @@
 require 'fileutils'
 require 'digest/sha1'
 require 'aws-sdk'
+require 'tsuru_helper'
 
 class TsuruDeployClient
 
@@ -13,20 +14,18 @@ class TsuruDeployClient
     @logger = logger
     @tsuru_home = tsuru_home
 
+    @tsuru_command = TsuruCommandLine.new(
+        { 'HOME' => @tsuru_home },
+        { :verbose => ENV['VERBOSE'] }
+    )
+
     target = URI.parse(protocol + environment + "-api." + host)
-    target_list = `tsuru target-list`
-
-    unless target_list.include?(target.to_s)
-      if !system("tsuru target-add #{environment} #{target}")
-        raise "Failed to add the target"
-      end
-    end
-
-    unless target_list.include?("* #{environment} #{target.to_s}")
-      if !system("tsuru target-set #{environment}")
-        raise "Failed to set the target"
-      end
-    end
+    @tsuru_command.target_remove(environment)
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
+    @tsuru_command.target_add(environment, target.to_s)
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
+    @tsuru_command.target_set(environment)
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
   end
 
   def deploy_app(user:, app:, env_vars: {}, postgres: '', git: false, units: 3)
