@@ -2,7 +2,7 @@ class SshHelper
   # Create our own SSH key
   def self.generate_key(path)
     FileUtils.mkdir_p(File.dirname(path))
-    system("ssh-keygen -f #{path} -q -N '' ")
+    system("yes y | ssh-keygen -f #{path} -q -N '' ")
   end
 
   # Generate some custom configuration for SSH
