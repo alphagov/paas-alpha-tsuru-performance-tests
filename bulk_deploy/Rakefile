@@ -114,6 +114,12 @@ namespace :tsuru do
   end
 end
 
+def gen_team_name(index)
+  "bulkt#{index}"
+end
+def gen_username(teamname, index)
+  "user#{index}@#{teamname}.site.com"
+end
 def ssh_wrapper_for_user(username)
   File.join(WORKING_DIR, "#{username}-ssh-wrapper")
 end
@@ -122,12 +128,12 @@ NUM_TEAMS=1
 NUM_USERS=10
 namespace :teams do |ns|
   (1..NUM_TEAMS).each { |team_i|
-    teamname = "bulkt#{team_i}"
+    teamname = gen_team_name(team_i)
     namespace teamname do
       namespace_name = "teams:#{teamname}" # I did not find a better way
       namespace :users do |ns|
         (1..NUM_USERS).each { |user_i|
-          username="user#{user_i}@#{teamname}.site.com"
+          username=gen_username(teamname, user_i)
           namespace username do
             task :create => [ "tsuru:login_admin" ] do
               LOGGER.info("Create user #{username}")
@@ -166,13 +172,13 @@ end
 namespace "apps" do
   namespace "flask-app" do
     (1..NUM_TEAMS).each { |team_i|
-      teamname = "bulkt#{team_i}"
+      teamname = gen_team_name(team_i)
       appname = "flask-app-#{teamname}"
       servicename = "db-#{appname}"
       namespace teamname do
         LOGGER.info("Deploying #{appname} with service #{servicename}")
         task "deploy" => [ "tsuru:login_admin" ]  do
-          username = "user1@#{teamname}.site.com"
+          username=gen_username(teamname, 1)
           user = {
             email: username,
             password: "password",
