@@ -6,6 +6,42 @@ require 'tsuru_api_client'
 require 'tsuru_api_service'
 require 'tsuru_deploy_client'
 
+
+#####################################################################
+# Runtime configuration
+# Environment config
+ENVIRONMENT = ENV['environment'] || raise("Must pass environment=...")
+TSURU_HOST = ENV['host'] || raise("Must pass host=...")
+
+ADMIN_USER = ENV["admin_user"] || 'administrator@gds.tsuru.gov'
+ADMIN_PASS = ENV["admin_pass"] || raise("Must pass admin_pass=...")
+
+# Environment size config
+NUM_TEAMS = (ENV["num_teams"] || 3).to_i
+NUM_USERS = (ENV["num_users"] || 10).to_i
+UNITS_PER_APP = (ENV["units_per_app"] || 3).to_i
+
+# Default password for users
+DEFAULT_USER_PASSWORD = ENV['default_user_password'] || "password"
+
+# datamarket Specific options
+DM_API_TOKEN = ENV['dm_api_token'] || "ourtoken"
+DM_SEARCH_API_TOKEN = ENV['dm_search_api_token'] || "oursearchtoken"
+DM_SEARCH_API_URL = ENV['dm_search_api_url'] || "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
+
+# stop execution on error
+STOP_ON_ERROR = false
+
+WORKING_DIR = ENV["workdir"] || "/tmp/workdir"
+REPOS_DIR = File.join(WORKING_DIR, "repos")
+VERBOSE = ENV["VERBOSE"] || false
+LOGGER = Logger.new(STDOUT)
+if VERBOSE == true
+  LOGGER.level = Logger::INFO
+else
+  LOGGER.level = Logger::DEBUG
+end
+# Apps and repositories
 APPS = [
   {
     app: "example-java-jetty",
@@ -37,20 +73,13 @@ APPS = [
   }
 ]
 
-WORKING_DIR = ENV["workdir"] || "/tmp/workdir"
-REPOS_DIR = File.join(WORKING_DIR, "repos")
-VERBOSE = ENV["verbose"] || false
-LOGGER = Logger.new(STDOUT)
-LOGGER.level = Logger::INFO
 
-TSURU_HOME=WORKING_DIR
+########################################################################
+# Helper functions
 
-ADMIN_USER = ENV["admin_user"] || 'administrator@gds.tsuru.gov'
-ADMIN_PASS = ENV["admin_pass"] || raise("Must pass admin_pass=...")
-
-UNITS_PER_APP = ENV["units_per_app"] || 3
-ENVIRONMENT = ENV['environment'] || raise("Must pass environment=...")
-TSURU_HOST = ENV['host'] || raise("Must pass host=...")
+def gen_team_name(index)
+  "bulkt#{index}"
+end
 
 API_CLIENT = TsuruAPIClient.new(
   logger: LOGGER,
@@ -74,8 +103,14 @@ DEPLOY_CLIENT = TsuruDeployClient.new(
 
 task :debug do
   LOGGER.level = Logger::DEBUG
+def gen_username(teamname, index)
+  "user#{index}@#{teamname}.site.com"
 end
 
+# SSH wrapper per user: one per user
+def ssh_wrapper_for_user(username)
+  File.join(WORKING_DIR, "#{username}-ssh-wrapper")
+end
 
 namespace :workdir do
   task :create_workdir do
@@ -113,14 +148,6 @@ namespace :tsuru do
   end
 end
 
-def gen_team_name(index)
-  "bulkt#{index}"
-end
-
-def gen_username(teamname, index)
-  "user#{index}@#{teamname}.site.com"
-end
-
 def gen_user_hash(teamname, index)
   username = gen_username(teamname, 1)
   {
@@ -130,13 +157,6 @@ def gen_user_hash(teamname, index)
     ssh_wrapper: ssh_wrapper_for_user(username)
   }
 end
-
-def ssh_wrapper_for_user(username)
-  File.join(WORKING_DIR, "#{username}-ssh-wrapper")
-end
-
-NUM_TEAMS=1
-NUM_USERS=10
 namespace :teams do |ns|
   (1..NUM_TEAMS).each { |team_i|
     teamname = gen_team_name(team_i)
