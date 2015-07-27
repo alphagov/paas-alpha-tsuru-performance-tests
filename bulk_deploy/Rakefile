@@ -81,8 +81,6 @@ def gen_team_name(index)
   "bulkt#{index}"
 end
 
-task :debug do
-  LOGGER.level = Logger::DEBUG
 def gen_username(teamname, index)
   "user#{index}@#{teamname}.site.com"
 end
