@@ -5,89 +5,96 @@ require 'tsuru_helper'
 
 class TsuruDeployClient
 
-  attr_accessor :api_client, :logger
+  attr_reader :api_client, :tsuru_command, :tsuru_home
+  attr_reader :ssh_wrapper, :logger
 
   def initialize(
-    api_client:, logger:, environment:, host:, tsuru_home:, protocol: "https://"
+    logger:, tsuru_user:, tsuru_password:, ssh_wrapper:, working_dir:,
+    environment:, host:, protocol: "https://"
   )
-    @api_client = api_client
     @logger = logger
-    @tsuru_home = tsuru_home
+    @tsuru_user = tsuru_user
+    @tsuru_password = tsuru_password
+    @ssh_wrapper = ssh_wrapper
+    @working_dir = working_dir
+    @tsuru_home = File.join(working_dir, tsuru_user)
+    @environment = environment
+    @target = URI.parse(protocol + environment + "-api." + host)
 
-    tsuru_output = File.open(File.join(@tsuru_home, "output"), 'a')
-    logger.info("Main output file = #{tsuru_output.path}")
-    @tsuru_command = TsuruCommandLine.new(
-        { 'HOME' => @tsuru_home },
-        {
-          :verbose => ENV['VERBOSE'],
-          :output_file => tsuru_output
-        }
+    @api_client = TsuruAPIClient.new(
+      logger: LOGGER,
+      environment: ENVIRONMENT,
+      host: TSURU_HOST
     )
 
-    target = URI.parse(protocol + environment + "-api." + host)
-    @tsuru_command.target_remove(environment)
-    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
-    @tsuru_command.target_add(environment, target.to_s)
-    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
-    @tsuru_command.target_set(environment)
-    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
-  end
-
-  def deploy_app(user:, app:, env_vars: {}, postgres: '', git: false, units: 3)
-    self.logger.info("Going to deploy #{app[:name]}")
-    self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
-    new_api_client = api_client.clone
-    new_api_client.login(user[:email], user[:password])
-
-    new_tsuru_command = @tsuru_command.clone
-    new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
-
-    tsuru_output = File.open(File.join(@tsuru_home, user[:email], "output"), 'a')
-    logger.info("#{user[:email]} output file = #{tsuru_output.path}")
-    new_tsuru_command.output_file = tsuru_output
-
-    git_command = GitCommandLine.new(app[:dir], {
-      'HOME' => @tsuru_home,
-      'GIT_SSH' => user[:ssh_wrapper]},
+    @tsuru_output = File.open(File.join(tsuru_home, "output"), 'a')
+    logger.info("Output file for #{tsuru_user} = #{@tsuru_output.path}")
+    @tsuru_command = TsuruCommandLine.new(
+      { 'HOME' => tsuru_home },
       {
         :verbose => ENV['VERBOSE'],
-        :output_file => tsuru_output
-      })
+        :output_file => @tsuru_output
+      }
+    )
+    tsuru_command.target_remove(environment)
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    tsuru_command.target_add(environment, @target.to_s)
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    tsuru_command.target_set(environment)
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    tsuru_command
 
-    new_tsuru_command.login(user[:email], user[:password])
+    self.logger.info("Login user #{tsuru_user}")
+    tsuru_command.login(tsuru_user, tsuru_password)
+    api_client.login(tsuru_user, tsuru_password)
 
-    if not new_api_client.list_apps().include? app[:name]
+  end
+
+  def deploy_app(app:, env_vars: {}, postgres: '', git: false, units: 3)
+    self.logger.info("Going to deploy #{app[:name]}. Check #{@tsuru_output.path} for output.")
+
+    if not api_client.list_apps().include? app[:name]
       self.logger.info("Create application #{app[:name]} " \
-        "on the platform #{app[:platform]}")
-      new_api_client.create_app(app[:name], app[:platform])
+                       "on the platform #{app[:platform]}")
+      api_client.create_app(app[:name], app[:platform])
     end
 
     # Set environment variables, if needed
     if env_vars.length > 0
       env_vars.each do |key,value|
-        new_api_client.set_env_var(app[:name], key, value)
+        api_client.set_env_var(app[:name], key, value)
       end
     end
 
     if postgres != ''
       instance_name = postgres
-      unless new_api_client.list_service_instances().include? instance_name
-          self.logger.info("Add postgres service instance #{instance_name}")
-          new_api_client.add_service_instance("postgresql", instance_name)
+      unless api_client.list_service_instances().include? instance_name
+        self.logger.info("Add postgres service instance #{instance_name}")
+        api_client.add_service_instance("postgresql", instance_name)
       end
 
-      unless new_api_client.app_has_service(app[:name], instance_name)
+      unless api_client.app_has_service(app[:name], instance_name)
         self.logger.info("Bind service #{instance_name} to #{app[:name]}")
-        new_api_client.bind_service_to_app(instance_name, app[:name])
+        api_client.bind_service_to_app(instance_name, app[:name])
       end
     end
 
     if git
-      self.logger.info("Deploy #{app[:name]} via git")
-      git_deploy(
-        new_api_client.get_app_repository(app[:name]),
-        git_command
-      )
+      self.logger.info("Deploy #{app[:name]} via git. Check #{@tsuru_output.path} for output.")
+      git_command = GitCommandLine.new(app[:dir], {
+        'HOME' => tsuru_home,
+        'GIT_SSH' => ssh_wrapper
+      },
+      {
+        :verbose => ENV['VERBOSE'],
+        :output_file => tsuru_command.output_file
+      })
+      git_command.push(api_client.get_app_repository(app[:name]))
+      raise git_command.stderr if git_command.exit_status != 0
+    else
+      self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
+      tsuru_command.app_deploy(app[:name], app[:dir], '*')
+    end
     else
       self.logger.info("Deploy #{app[:name]} via app-deploy")
       app_deploy(app[:dir], app[:name], new_tsuru_command)
@@ -95,51 +102,39 @@ class TsuruDeployClient
 
     deployed_units = self.api_client.get_app_info(app[:name])["units"].length
     if deployed_units < units
-      new_api_client.add_units(units - deployed_units, app[:name])
+      api_client.add_units(units - deployed_units, app[:name])
     end
 
-    tsuru_output.close
   end
 
-  def remove_app(user:, app:, postgres: '')
+  def remove_app(app:, postgres: '')
     self.logger.info("Going to remove #{app[:name]}")
-    self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
-    new_api_client = api_client.clone
-    new_api_client.login(user[:email], user[:password])
 
-    if not new_api_client.list_apps().include? app[:name]
+    if not api_client.list_apps().include? app[:name]
       self.logger.warn("Application #{app[:name]} does not exist " \
-        "on the platform #{app[:platform]}")
+                       "on the platform #{app[:platform]}")
       return
     end
 
-    new_tsuru_command = @tsuru_command.clone
-    new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
-
-    tsuru_output = File.open(File.join(@tsuru_home, user[:email], "output"), 'a')
-    logger.info("#{user[:email]} output file = #{tsuru_output.path}")
-    new_tsuru_command.output_file = tsuru_output
-
-    new_tsuru_command.login(user[:email], user[:password])
-    app_remove(app[:name], new_tsuru_command)
+    tsuru_command.app_remove(app[:name])
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
 
     if postgres != ''
-      @logger.info "Remove service #{postgres}"
+      logger.info "Remove service #{postgres}"
       retries=5
       begin
         sleep 1
-        @api_client.remove_service_instance(postgres)
+        api_client.remove_service_instance(postgres)
       rescue Exception => e
         retry if (retries -= 2) > 0
-        @logger.error "Cannot remove service #{postgres}. Exception: #{e}"
+        logger.error "Cannot remove service #{postgres}. Exception: #{e}"
       end
     end
-
   end
 
   def import_pg_dump(app_name, postgres_instance_name)
     # Download database dump from S3
-    File.open(File.join(@tsuru_home, "full.dump"), "wb") do |file|
+    File.open(File.join(tsuru_home, "full.dump"), "wb") do |file|
       reap = Aws::S3::Client.new.get_object(
         {
           bucket:"digital-marketplace-stuff",
@@ -149,14 +144,14 @@ class TsuruDeployClient
       )
     end
 
-    postgres_ip = @api_client.get_env_vars(app_name)["PG_HOST"]
-    db_name = @api_client.get_env_vars(app_name)["PG_DATABASE"]
+    postgres_ip = api_client.get_env_vars(app_name)["PG_HOST"]
+    db_name = api_client.get_env_vars(app_name)["PG_DATABASE"]
     # Ugly hack incoming!
     ssh_config_dir = `find ~ -name tsuru-ansible | head -n 1 | tr -d '\n'`
 
     # Use scp to upload the database dump to posgres box
     scp_cmd = "cd #{ssh_config_dir} && scp -F ssh.config "\
-              "#{@tsuru_home}/full.dump #{postgres_ip}:~/full.dump"
+      "#{tsuru_home}/full.dump #{postgres_ip}:~/full.dump"
     self.logger.info("SCP postgres dump file over: #{scp_cmd}")
     if !system(scp_cmd)
       raise "Failed to upload database dump via scp"
