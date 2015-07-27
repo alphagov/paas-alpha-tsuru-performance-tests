@@ -185,9 +185,9 @@ namespace "apps" do
   namespace "flask-app" do
     (1..NUM_TEAMS).each { |team_i|
       teamname = gen_team_name(team_i)
-      username=gen_username(teamname, 1)
+      username= gen_username(teamname, 1)
       appname = "flask-app-#{teamname}"
-      servicename = "db-#{appname}"
+      servicename = "#{teamname}-flask-app-db"
       namespace teamname do
         task "deploy" => [ "tsuru:login_admin" ] do
           LOGGER.info("Deploying #{appname} with service #{servicename}")
@@ -249,7 +249,7 @@ namespace "apps" do
     (1..NUM_TEAMS).each { |team_i|
       teamname = gen_team_name(team_i)
       appname = "dm-api-#{teamname}"
-      servicename = "db-#{appname}"
+      servicename = "#{teamname}-dm-api-db"
       namespace teamname do
         task "deploy" => [ "tsuru:login_admin" ] do
           LOGGER.info("Deploying #{appname}")
