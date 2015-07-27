@@ -59,45 +59,47 @@ class TsuruDeployClient
       api_client.create_app(app[:name], app[:platform])
     end
 
-    # Set environment variables, if needed
-    if env_vars.length > 0
-      env_vars.each do |key,value|
-        api_client.set_env_var(app[:name], key, value)
-      end
-    end
-
-    if postgres != ''
-      instance_name = postgres
-      unless api_client.list_service_instances().include? instance_name
-        self.logger.info("Add postgres service instance #{instance_name}")
-        api_client.add_service_instance("postgresql", instance_name)
-      end
-
-      unless api_client.app_has_service(app[:name], instance_name)
-        self.logger.info("Bind service #{instance_name} to #{app[:name]}")
-        api_client.bind_service_to_app(instance_name, app[:name])
-      end
-    end
-
-    if git
-      self.logger.info("Deploy #{app[:name]} via git. Check #{@tsuru_output.path} for output.")
-      git_command = GitCommandLine.new(app[:dir], {
-        'HOME' => tsuru_home,
-        'GIT_SSH' => ssh_wrapper
-      },
-      {
-        :verbose => ENV['VERBOSE'],
-        :output_file => tsuru_command.output_file
-      })
-      git_command.push(api_client.get_app_repository(app[:name]))
-      raise git_command.stderr if git_command.exit_status != 0
+    # Check if the app is already running, skip if it is
+    deployed_units = self.api_client.get_app_info(app[:name])["units"].length
+    if deployed_units > 1
+      self.logger.info("#{app[:name]} is already deployed, skipping. Remove app to redeploy.")
     else
-      self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
-      tsuru_command.app_deploy(app[:name], app[:dir], '*')
-    end
-    else
-      self.logger.info("Deploy #{app[:name]} via app-deploy")
-      app_deploy(app[:dir], app[:name], new_tsuru_command)
+      # Set environment variables, if needed
+      if env_vars.length > 0
+        env_vars.each do |key,value|
+          api_client.set_env_var(app[:name], key, value)
+        end
+      end
+
+      if postgres != ''
+        instance_name = postgres
+        unless api_client.list_service_instances().include? instance_name
+          self.logger.info("Add postgres service instance #{instance_name}")
+          api_client.add_service_instance("postgresql", instance_name)
+        end
+
+        unless api_client.app_has_service(app[:name], instance_name)
+          self.logger.info("Bind service #{instance_name} to #{app[:name]}")
+          api_client.bind_service_to_app(instance_name, app[:name])
+        end
+      end
+
+      if git
+        self.logger.info("Deploy #{app[:name]} via git. Check #{@tsuru_output.path} for output.")
+        git_command = GitCommandLine.new(app[:dir], {
+          'HOME' => tsuru_home,
+          'GIT_SSH' => ssh_wrapper
+        },
+        {
+          :verbose => ENV['VERBOSE'],
+          :output_file => tsuru_command.output_file
+        })
+        git_command.push(api_client.get_app_repository(app[:name]))
+        raise git_command.stderr if git_command.exit_status != 0
+      else
+        self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
+        tsuru_command.app_deploy(app[:name], app[:dir], '*')
+      end
     end
 
     deployed_units = self.api_client.get_app_info(app[:name])["units"].length
