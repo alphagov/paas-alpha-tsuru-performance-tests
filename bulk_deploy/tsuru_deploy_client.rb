@@ -33,7 +33,9 @@ class TsuruDeployClient
     self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
     new_api_client = api_client.clone
     new_api_client.login(user[:email], user[:password])
-    @tsuru_command.login(user[:email], user[:password])
+    new_tsuru_command = @tsuru_command.clone
+    new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
+    new_tsuru_command.login(user[:email], user[:password])
 
     if not new_api_client.list_apps().include? app[:name]
       self.logger.info("Create application #{app[:name]} " \
@@ -70,7 +72,7 @@ class TsuruDeployClient
       )
     else
       self.logger.info("Deploy #{app[:name]} via app-deploy")
-      app_deploy(app[:dir], app[:name])
+      app_deploy(app[:dir], app[:name], new_tsuru_command)
     end
 
     deployed_units = self.api_client.get_app_info(app[:name])["units"].length
@@ -91,8 +93,11 @@ class TsuruDeployClient
       return
     end
 
-    @tsuru_command.login(user[:email], user[:password])
-    app_remove(app[:name])
+    new_tsuru_command = @tsuru_command.clone
+    new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
+    new_tsuru_command.login(user[:email], user[:password])
+    new_tsuru_command.login(user[:email], user[:password])
+    app_remove(app[:name], new_tsuru_command)
 
     if postgres != ''
       @logger.info "Remove service #{postgres}"
@@ -158,15 +163,15 @@ class TsuruDeployClient
 
   private
 
-  def app_deploy(path, app_name)
+  def app_deploy(path, app_name, tsuru_command)
     FileUtils.cd(path)
-    @tsuru_command.app_deploy(app_name, path, '*')
-    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
+    tsuru_command.app_deploy(app_name, path, '*')
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
 
-  def app_remove(app_name)
-    @tsuru_command.app_remove(app_name)
-    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
+  def app_remove(app_name, tsuru_command)
+    tsuru_command.app_remove(app_name)
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
 
   def git_deploy(path, git_repo, ssh_wrapper_path)
