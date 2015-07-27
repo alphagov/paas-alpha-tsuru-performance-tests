@@ -210,7 +210,7 @@ namespace "apps" do
               name: appname,
               dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
               platform: "python"
-            },
+            }
           )
         end
       end
