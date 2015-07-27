@@ -288,7 +288,7 @@ namespace "apps" do
       teamname = gen_team_name(team_i)
       appname = "dm-supplier-frontend-#{teamname}"
       namespace teamname do
-        task "deploy" => [ "apps:dm-api:bulkt#{team_i}:deploy" ] do
+        task "deploy" => [ "tsuru:login_admin" ]  do
           LOGGER.info("Deploying #{appname}")
           api_token = "ourtoken"
           search_api_token = "oursearchtoken"
