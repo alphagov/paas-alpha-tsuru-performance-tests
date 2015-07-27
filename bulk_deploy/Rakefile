@@ -292,7 +292,7 @@ namespace "apps" do
           LOGGER.info("Deploying #{appname}")
           api_token = "ourtoken"
           search_api_token = "oursearchtoken"
-          api_url = API_CLIENT.get_app_url("dm-api-#{teamname}")
+          api_url = "https://" + API_CLIENT.get_app_url("dm-api-#{teamname}")
           search_api_url = "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 5),
