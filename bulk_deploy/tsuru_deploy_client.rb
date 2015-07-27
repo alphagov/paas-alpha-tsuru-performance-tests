@@ -131,9 +131,8 @@ class TsuruDeployClient
 
   def app_deploy(path, app_name)
     FileUtils.cd(path)
-    if !system("tsuru app-deploy * -a #{app_name}")
-      raise "Failed to deploy the app"
-    end
+    @tsuru_command.app_deploy(app_name, path, '*')
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
   end
 
   def app_remove(app_name)
