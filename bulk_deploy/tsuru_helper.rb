@@ -52,6 +52,14 @@ class TsuruCommandLine < CommandLineHelper
     execute_helper('tsuru', 'app-remove', '-a', app_name, '-y')
   end
 
+  def app_deploy(app_name, path, glob='*')
+    cmd = ['tsuru', 'app-deploy']
+    # Resolve the glob and make it relative to path
+    cmd += Dir.glob(File.join(path, glob)).map{ |f| f.gsub(/#{path}\/*/, './') }
+    cmd += ['-a', app_name]
+    execute_helper(*cmd, { :chdir => path })
+  end
+
   def app_unlock(app_name)
     execute_helper('tsuru-admin', 'app-unlock', '-a', app_name, '-y')
   end
