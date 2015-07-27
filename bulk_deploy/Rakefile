@@ -107,10 +107,13 @@ def get_deploy_client(username)
   @deploy_clients[username]
 end
 
+########################################################################
 namespace :workdir do
-  task :create_workdir do
+  desc "Create working directory"
+  task :create do
     FileUtils.mkdir_p WORKING_DIR
   end
+  desc "Clean up the working directory"
   task :clean do
     FileUtils.rm_rf WORKING_DIR
   end
@@ -118,6 +121,7 @@ end
 
 namespace :clone do |ns|
   APPS.each { |entry|
+    desc "Clone repository #{entry[:repo]} for app #{entry[:app]}"
     task "clone_#{entry[:app]}" do |t|
       repo_dir = File.join(REPOS_DIR, entry[:app])
       git_command = GitCommandLine.new(repo_dir, {}, { :verbose => VERBOSE })
@@ -132,12 +136,14 @@ namespace :clone do |ns|
       end
     end
   }
+  desc "Clone all repos"
   multitask :all => ns.tasks do
     LOGGER.info "All repos cloned and updated."
   end
 end
 
 namespace :tsuru do
+  desc "Login as admin for consecutive tasks"
   task :login_admin do
     @api_client = TsuruAPIClient.new(
       logger: LOGGER,
@@ -160,8 +166,9 @@ namespace :teams do |ns|
       namespace_name = "teams:#{teamname}" # I did not find a better way
       namespace :users do |ns|
         (1..NUM_USERS).each { |user_i|
-          username=gen_username(teamname, user_i)
+          username = gen_username(teamname, user_i)
           namespace username do
+            desc "Create user #{username} in team #{teamname}"
             task :create => [ "tsuru:login_admin" ] do
               LOGGER.info("Create user #{username}")
               @api_service.create_user(username, "password", teamname)
@@ -173,6 +180,7 @@ namespace :teams do |ns|
               }
               @api_service.add_key_to_user(user)
             end
+            desc "Remove user #{username} in team #{teamname}"
             task :remove => [ "tsuru:login_admin" ] do
               LOGGER.info("Remove user #{username}")
               @api_client.remove_user(username)
@@ -184,18 +192,23 @@ namespace :teams do |ns|
         desc "Remove all users in team #{teamname}"
         multitask :remove_all => (1..NUM_USERS).map { |user_i| "teams:#{teamname}:users:#{gen_username(teamname, user_i)}:remove" }
       end
+      desc "Create team #{teamname}"
       task :create => [ "tsuru:login_admin" ] do |t|
         LOGGER.info("Create team #{teamname}")
-        API_SERVICE.create_team(teamname)
+        @api_service.create_team(teamname)
         ns["#{namespace_name}:users:create_all"].invoke
       end
-      task :remove => [ "tsuru:login_admin", ns["#{namespace_name}:users:remove_all" ] ] do
+      desc "Remove team #{teamname}"
+      task :remove => [ "tsuru:login_admin", "#{namespace_name}:users:remove_all" ] do
         LOGGER.info("Remove team #{teamname}")
         @api_client.remove_team(teamname)
       end
     end
   }
+
+  desc "Create all teams and its users"
   multitask :create_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:create/ }
+  desc "Remove all teams and its users"
   multitask :remove_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:remove/}
 end
 
