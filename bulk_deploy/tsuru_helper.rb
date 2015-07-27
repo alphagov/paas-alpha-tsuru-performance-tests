@@ -27,6 +27,26 @@ end
 
 # Wrapper adount the TsuruCommandLine
 class TsuruCommandLine < CommandLineHelper
+  attr_accessor :tsuru_home
+
+  def initialize(env = {}, options = {})
+    # the $HOME can be set from these variables in order
+    #  2. env['HOME'], home passed in parametrised environment
+    #  3. Currenti $HOME  environment variable
+    @tsuru_home = env['HOME'] || ENV['HOME']
+    super(env, options)
+  end
+
+  def copy_and_set_home(new_home)
+    FileUtils.mkdir_p(new_home)
+    [ ".tsuru_target", ".tsuru_targets", ".tsuru_token" ].each { |f|
+      if File.exist?(File.join(@tsuru_home, f))
+        FileUtils.copy(File.join(@tsuru_home, f), File.join(new_home, f))
+      end
+    }
+    @tsuru_home = new_home
+    @env['HOME'] = new_home
+  end
 
   def target_add(target_label, target_url)
     execute_helper('tsuru', 'target-add', target_label, target_url)
