@@ -175,13 +175,13 @@ class TsuruDeployClient
   #  * a dump_url
   #  * a secret authentication header in the form of "Header: secret"
   #
+  # As pg_restore returns errors, we check that the DB is imported by querying one table
+  #
   def import_pg_dump_via_app(app_name, dump_url, auth_header)
     remote_command =
       "sudo apt-get install postgresql-client -y && "\
       "echo \"*:*:*:${PG_PASSWORD}\" > ~/.pgpass && chmod 600 ~/.pgpass && "\
       "curl #{dump_url} -H '#{auth_header}' | "\
-      "pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE}"
-    @tsuru_command.app_run_once(app_name, remote_command)
     raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
   end
 
@@ -189,6 +189,9 @@ class TsuruDeployClient
 
   def app_deploy(path, app_name, tsuru_command)
     tsuru_command.app_deploy(app_name, path, '*')
+      "( pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE} || "\
+      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from users;' | grep -q t )"
+    tsuru_command.app_run_once(app_name, remote_command)
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
 

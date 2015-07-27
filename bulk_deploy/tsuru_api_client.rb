@@ -202,7 +202,7 @@ class TsuruAPIClient
     )
 
     for obj in objects
-      @logger.info(obj["Message"])
+      @logger.debug(obj["Message"])
     end
   end
 
@@ -341,7 +341,7 @@ class TsuruAPIClient
     )
 
     for obj in objects
-      @logger.info(obj["Message"])
+      @logger.debug(obj["Message"])
     end
   end
 
