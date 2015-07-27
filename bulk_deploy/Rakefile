@@ -234,6 +234,14 @@ namespace "apps" do
             units: UNITS_PER_APP
           )
         end
+        task "remove" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.remove_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+            }
+          )
+        end
       end
     }
   end
@@ -262,6 +270,15 @@ namespace "apps" do
             },
             postgres: servicename,
             units: UNITS_PER_APP
+          )
+        end
+        task "remove" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.remove_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+            },
+            postgres: servicename,
           )
         end
         task "import_pg_dump" do
@@ -316,6 +333,14 @@ namespace "apps" do
             units: UNITS_PER_APP
           )
         end
+        task "remove" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.remove_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+            }
+          )
+        end
       end
     }
   end
@@ -349,6 +374,14 @@ namespace "apps" do
             units: UNITS_PER_APP
           )
         end
+        task "remove" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.remove_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+            }
+          )
+        end
       end
     }
   end
@@ -380,6 +413,14 @@ namespace "apps" do
               DM_SEARCH_API_URL: search_api_url
             },
             units: UNITS_PER_APP
+          )
+        end
+        task "remove" => [ "tsuru:login_admin" ] do
+          DEPLOY_CLIENT.remove_app(
+            user: gen_user_hash(teamname, 1),
+            app: {
+              name: appname,
+            }
           )
         end
       end
