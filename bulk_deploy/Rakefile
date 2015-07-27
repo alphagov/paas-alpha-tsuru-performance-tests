@@ -262,15 +262,26 @@ namespace "apps" do
             postgres: servicename,
             units: UNITS_PER_APP
           )
-          DEPLOY_CLIENT.import_pg_dump(
-            appname,
-            servicename,
-          )
-          # Return API URL
-          "https://" + API.get_app_url(appname)
+        end
+        task "import_pg_dump" do
+          pg_dump_url=ENV['dm_api_pg_dump_url'] || raise "You must pass dm_api_pg_dump_url=... with the url to the db dump for DM API"
+          pg_dump_auth_header=ENV['dm_api_pg_dump_auth_header'] || raise "You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API"
+
+          DEPLOY_CLIENT.import_pg_dump_via_app(appname, pg_dump_url, pg_dump_auth_header)
+        end
+
+        task "import_pg_dump_via_ssh" => [ "apps:dm-api:upload_pg_dump" ] do
+          postgres_ip = API_CLIENT.get_env_vars(appname)["PG_HOST"]
+          db_name = API_CLIENT.get_env_vars(appname)["PG_DATABASE"]
+          DEPLOY_CLIENT.import_pg_dump(POSTGRES_DB_IP, db_name)
         end
       end
     }
+    task "upload_pg_dump_via_ssh" => [ "tsuru:login_admin" ] do
+      # Get the IP from the postgresapi
+      postgres_ip = API_CLIENT.get_env_vars('postgresapi')["POSTGRESAPI_SHARED_HOST"]
+      DEPLOY_CLIENT.upload_pg_dump(POSTGRES_DB_IP)
+    end
   end
   namespace "dm-supplier-frontend" do
     (1..NUM_TEAMS).each { |team_i|
