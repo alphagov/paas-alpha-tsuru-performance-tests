@@ -14,9 +14,14 @@ class TsuruDeployClient
     @logger = logger
     @tsuru_home = tsuru_home
 
+    tsuru_output = File.open(File.join(@tsuru_home, "output"), 'a')
+    logger.info("Main output file = #{tsuru_output.path}")
     @tsuru_command = TsuruCommandLine.new(
         { 'HOME' => @tsuru_home },
-        { :verbose => ENV['VERBOSE'] }
+        {
+          :verbose => ENV['VERBOSE'],
+          :output_file => tsuru_output
+        }
     )
 
     target = URI.parse(protocol + environment + "-api." + host)
@@ -33,8 +38,22 @@ class TsuruDeployClient
     self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
     new_api_client = api_client.clone
     new_api_client.login(user[:email], user[:password])
+
     new_tsuru_command = @tsuru_command.clone
     new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
+
+    tsuru_output = File.open(File.join(@tsuru_home, user[:email], "output"), 'a')
+    logger.info("#{user[:email]} output file = #{tsuru_output.path}")
+    new_tsuru_command.output_file = tsuru_output
+
+    git_command = GitCommandLine.new(app[:dir], {
+      'HOME' => @tsuru_home,
+      'GIT_SSH' => user[:ssh_wrapper]},
+      {
+        :verbose => ENV['VERBOSE'],
+        :output_file => tsuru_output
+      })
+
     new_tsuru_command.login(user[:email], user[:password])
 
     if not new_api_client.list_apps().include? app[:name]
@@ -66,9 +85,8 @@ class TsuruDeployClient
     if git
       self.logger.info("Deploy #{app[:name]} via git")
       git_deploy(
-        app[:dir],
         new_api_client.get_app_repository(app[:name]),
-        user[:ssh_wrapper]
+        git_command
       )
     else
       self.logger.info("Deploy #{app[:name]} via app-deploy")
@@ -79,6 +97,8 @@ class TsuruDeployClient
     if deployed_units < units
       new_api_client.add_units(units - deployed_units, app[:name])
     end
+
+    tsuru_output.close
   end
 
   def remove_app(user:, app:, postgres: '')
@@ -95,7 +115,11 @@ class TsuruDeployClient
 
     new_tsuru_command = @tsuru_command.clone
     new_tsuru_command.copy_and_set_home(File.join(@tsuru_home, user[:email]))
-    new_tsuru_command.login(user[:email], user[:password])
+
+    tsuru_output = File.open(File.join(@tsuru_home, user[:email], "output"), 'a')
+    logger.info("#{user[:email]} output file = #{tsuru_output.path}")
+    new_tsuru_command.output_file = tsuru_output
+
     new_tsuru_command.login(user[:email], user[:password])
     app_remove(app[:name], new_tsuru_command)
 
@@ -164,7 +188,6 @@ class TsuruDeployClient
   private
 
   def app_deploy(path, app_name, tsuru_command)
-    FileUtils.cd(path)
     tsuru_command.app_deploy(app_name, path, '*')
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
@@ -174,13 +197,7 @@ class TsuruDeployClient
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
 
-  def git_deploy(path, git_repo, ssh_wrapper_path)
-    FileUtils.cd(path)
-    git_command = GitCommandLine.new(path, {
-      'HOME' => @tsuru_home,
-      'GIT_SSH' => ssh_wrapper_path},
-      { :verbose => ENV['VERBOSE'] })
-
+  def git_deploy(git_repo, git_command)
     git_command.push(git_repo)
     raise git_command.stderr if git_command.exit_status != 0
   end
