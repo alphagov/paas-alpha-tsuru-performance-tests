@@ -182,24 +182,4 @@ class TsuruDeployClient
     raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
   end
 
-  private
-
-  def app_deploy(path, app_name, tsuru_command)
-    tsuru_command.app_deploy(app_name, path, '*')
-      "( pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE} || "\
-      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from users;' | grep -q t )"
-    tsuru_command.app_run_once(app_name, remote_command)
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
-  end
-
-  def app_remove(app_name, tsuru_command)
-    tsuru_command.app_remove(app_name)
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
-  end
-
-  def git_deploy(git_repo, git_command)
-    git_command.push(git_repo)
-    raise git_command.stderr if git_command.exit_status != 0
-  end
-
 end
