@@ -164,18 +164,18 @@ namespace :teams do |ns|
           namespace username do
             task :create => [ "tsuru:login_admin" ] do
               LOGGER.info("Create user #{username}")
-              API_SERVICE.create_user(username, "password", teamname)
+              @api_service.create_user(username, "password", teamname)
               user = {
                 email: username,
                 password: "password",
                 team: teamname,
                 ssh_wrapper: ssh_wrapper_for_user(username)
               }
-              API_SERVICE.add_key_to_user(user)
+              @api_service.add_key_to_user(user)
             end
             task :remove => [ "tsuru:login_admin" ] do
               LOGGER.info("Remove user #{username}")
-              API_CLIENT.remove_user(username)
+              @api_client.remove_user(username)
             end
           end
         }
@@ -189,7 +189,7 @@ namespace :teams do |ns|
       end
       task :remove => [ "tsuru:login_admin", ns["#{namespace_name}:users:remove_all" ] ] do
         LOGGER.info("Remove team #{teamname}")
-        API_SERVICE.remove_team(teamname)
+        @api_client.remove_team(teamname)
       end
     end
   }
