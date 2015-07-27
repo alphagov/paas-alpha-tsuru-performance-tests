@@ -492,8 +492,92 @@ namespace "apps" do
 
 end
 
+
+# Generate specific tasks to deploy apps in each team
+app_list = [
+  "flask-app",
+  "java-app",
+  "dm-api",
+  "dm-supplier-frontend",
+  "dm-buyer-frontend",
+  "dm-admin-frontend"
+]
+
+namespace "team_deployment" do
+  failed_tasks = []
+  (1..NUM_TEAMS).each { |team_i|
+    teamname = gen_team_name(team_i)
+    username= gen_username(teamname, 1) # use first user
+
+    namespace teamname do
+      app_list.each { |app|
+        namespace app do
+          task "deploy" => [ "tsuru:login_admin" ] do
+            # Note: there are differences between calling .invoke and .execute
+            # With execute you must pass a hash with the arguments
+            task("apps:#{app}:deploy").execute(teamname: teamname, username: username)
+          end
+          task "remove" => [ "tsuru:login_admin" ] do
+            task("apps:#{app}:remove").execute(teamname: teamname, username: username)
+          end
         end
+      }
+      desc "Deploy all applications for team #{teamname}"
+      task "deploy_all" do
+        app_list.map { |app|
+          # Error tolerant per team
+          begin
+            task("team_deployment:#{teamname}:#{app}:deploy").invoke
+          rescue Exception => e
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error(e.message)
+            LOGGER.debug(e.backtrace)
+            break
+          end
+        }
       end
-    }
+      desc "Remove all applications for team #{teamname}"
+      task "remove_all" do
+        app_list.map { |app|
+          # Error tolerant per team
+          begin
+            task("team_deployment:#{teamname}:#{app}:remove").invoke
+          rescue Exception => e
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error(e.message)
+            LOGGER.debug(e.backtrace)
+            break
+          end
+        }
+      end
+    end
+  }
+  desc "Deploy in parallel all applications for all teams"
+  multitask "deploy_parallel" =>
+  (1..NUM_TEAMS).map { |team_i|
+    teamname = gen_team_name(team_i)
+    "team_deployment:#{teamname}:deploy_all"
+  } do
+    if failed_tasks.empty?
+      LOGGER.info("Deployment finished OK")
+    else
+      LOGGER.error("Some tasks failed: " + failed_tasks.join(' '))
+      abort
+    end
+  end
+  desc "Remove in parallel all applications for all teams"
+  multitask "remove_parallel" =>
+  (1..NUM_TEAMS).map { |team_i|
+    teamname = gen_team_name(team_i)
+    "team_deployment:#{teamname}:remove_all"
+  } do
+    if failed_tasks.empty?
+      LOGGER.info("Removal finished OK")
+    else
+      LOGGER.error("Some tasks failed: " + failed_tasks.join(' '))
+      abort
+    end
   end
 end
