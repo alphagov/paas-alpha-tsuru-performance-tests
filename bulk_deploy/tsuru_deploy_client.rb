@@ -104,9 +104,11 @@ class TsuruDeployClient
 
     deployed_units = self.api_client.get_app_info(app[:name])["units"].length
     if deployed_units < units
+      self.logger.info("Increasing units of #{app[:name]} #{deployed_units} => #{units}")
       api_client.add_units(units - deployed_units, app[:name])
     end
 
+    self.logger.info("Finished deploying #{app[:name]}")
   end
 
   def remove_app(app:, postgres: '')
