@@ -107,6 +107,16 @@ def get_deploy_client(username)
   @deploy_clients[username]
 end
 
+# Control parallel run
+@stop_execution = false
+def stop_execution
+  @stop_execution = true
+end
+
+def execution_stopped?
+  @stop_execution
+end
+
 ########################################################################
 namespace :workdir do
   desc "Create working directory"
@@ -533,8 +543,10 @@ namespace "team_deployment" do
             failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
             LOGGER.error(e.message)
             LOGGER.debug(e.backtrace)
+            stop_execution if STOP_ON_ERROR
             break
           end
+          break if execution_stopped?
         }
       end
       desc "Remove all applications for team #{teamname}"
@@ -548,8 +560,10 @@ namespace "team_deployment" do
             failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
             LOGGER.error(e.message)
             LOGGER.debug(e.backtrace)
+            stop_execution if STOP_ON_ERROR
             break
           end
+          break if execution_stopped?
         }
       end
     end
