@@ -264,8 +264,8 @@ namespace "apps" do
           )
         end
         task "import_pg_dump" do
-          pg_dump_url=ENV['dm_api_pg_dump_url'] || raise "You must pass dm_api_pg_dump_url=... with the url to the db dump for DM API"
-          pg_dump_auth_header=ENV['dm_api_pg_dump_auth_header'] || raise "You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API"
+          pg_dump_url= ENV['dm_api_pg_dump_url'] || raise("You must pass dm_api_pg_dump_url=... with the url to the db dump for DM API")
+          pg_dump_auth_header= ENV['dm_api_pg_dump_auth_header'] || raise("You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API")
 
           DEPLOY_CLIENT.import_pg_dump_via_app(appname, pg_dump_url, pg_dump_auth_header)
         end
