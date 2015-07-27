@@ -93,6 +93,19 @@ class TsuruDeployClient
 
     @tsuru_command.login(user[:email], user[:password])
     app_remove(app[:name])
+
+    if postgres != ''
+      @logger.info "Remove service #{postgres}"
+      retries=5
+      begin
+        sleep 1
+        @api_client.remove_service_instance(postgres)
+      rescue Exception => e
+        retry if (retries -= 2) > 0
+        @logger.error "Cannot remove service #{postgres}. Exception: #{e}"
+      end
+    end
+
   end
 
   def import_pg_dump(app_name, postgres_instance_name)
