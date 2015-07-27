@@ -33,6 +33,7 @@ class TsuruDeployClient
     self.logger.info("Login user #{user[:email]} of the team #{user[:team]}")
     new_api_client = api_client.clone
     new_api_client.login(user[:email], user[:password])
+    @tsuru_command.login(user[:email], user[:password])
 
     if not new_api_client.list_apps().include? app[:name]
       self.logger.info("Create application #{app[:name]} " \
