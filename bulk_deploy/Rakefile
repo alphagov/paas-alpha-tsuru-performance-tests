@@ -159,8 +159,8 @@ namespace :teams do |ns|
               API_SERVICE.add_key_to_user(user)
             end
             task :remove => [ "tsuru:login_admin" ] do
-              puts "remove user #{username}"
-              sleep 1
+              LOGGER.info("Remove user #{username}")
+              API_CLIENT.remove_user(username)
             end
           end
         }
@@ -173,7 +173,8 @@ namespace :teams do |ns|
         ns["#{namespace_name}:users:create_all"].invoke
       end
       task :remove => [ "tsuru:login_admin", ns["#{namespace_name}:users:remove_all" ] ] do
-        puts "remove team #{team_i}"
+        LOGGER.info("Remove team #{teamname}")
+        API_SERVICE.remove_team(teamname)
       end
     end
   }
