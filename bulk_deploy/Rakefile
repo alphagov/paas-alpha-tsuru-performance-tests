@@ -89,7 +89,6 @@ end
 namespace :clone do |ns|
   APPS.each { |entry|
     task "clone_#{entry[:app]}" do |t|
-
       repo_dir = File.join(REPOS_DIR, entry[:app])
       git_command = GitCommandLine.new(repo_dir, {}, { :verbose => VERBOSE })
       if (File.directory?(repo_dir))
@@ -190,8 +189,8 @@ namespace "apps" do
       appname = "flask-app-#{teamname}"
       servicename = "db-#{appname}"
       namespace teamname do
-        LOGGER.info("Deploying #{appname} with service #{servicename}")
         task "deploy" => [ "tsuru:login_admin" ] do
+          LOGGER.info("Deploying #{appname} with service #{servicename}")
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 1),
             app: {
@@ -222,8 +221,8 @@ namespace "apps" do
       teamname = gen_team_name(team_i)
       appname = "java-app-#{teamname}"
       namespace teamname do
-        LOGGER.info("Deploying #{appname}")
         task "deploy" => [ "tsuru:login_admin" ] do
+          LOGGER.info("Deploying #{appname}")
           DEPLOY_CLIENT.deploy_app(
             user: gen_user_hash(teamname, 2),
             app: {
@@ -243,8 +242,8 @@ namespace "apps" do
       appname = "dm-api-#{teamname}"
       servicename = "db-#{appname}"
       namespace teamname do
-        LOGGER.info("Deploying #{appname}")
         task "deploy" => [ "tsuru:login_admin" ] do
+          LOGGER.info("Deploying #{appname}")
           api_token = "ourtoken"
           search_api_token = "oursearchtoken"
           search_api_url = "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
@@ -278,8 +277,8 @@ namespace "apps" do
       teamname = gen_team_name(team_i)
       appname = "dm-supplier-frontend-#{teamname}"
       namespace teamname do
-        LOGGER.info("Deploying #{appname}")
         task "deploy" => [ "apps:dm-api:bulkt#{team_i}:deploy" ] do
+          LOGGER.info("Deploying #{appname}")
           api_token = "ourtoken"
           search_api_token = "oursearchtoken"
           api_url = API_CLIENT.get_app_url("dm-api-#{teamname}")
