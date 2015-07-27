@@ -581,3 +581,9 @@ namespace "team_deployment" do
     end
   end
 end
+
+desc "Bring up all the environment"
+task "deploy" => [ "teams:create_all", "team_deployment:deploy_parallel" ]
+desc "Bring down all the environment"
+task "destroy" => [ "teams:remove_all", "team_deployment:remove_parallel", "workdir:clean" ]
+
