@@ -52,6 +52,14 @@ class TsuruCommandLine < CommandLineHelper
     execute_helper('tsuru', 'app-remove', '-a', app_name, '-y')
   end
 
+  def app_run(app_name, cmd)
+    execute_helper('tsuru', 'app-run', '-a', app_name, cmd)
+  end
+
+  def app_run_once(app_name, cmd)
+    execute_helper('tsuru', 'app-run', '-o', '-a', app_name, cmd)
+  end
+
   def app_deploy(app_name, path, glob='*')
     cmd = ['tsuru', 'app-deploy']
     # Resolve the glob and make it relative to path

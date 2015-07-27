@@ -127,6 +127,22 @@ class TsuruDeployClient
     system(restore_cmd)
   end
 
+  # Uses tsuru app-run command to download and import the DB dump.
+  #
+  # To download the DB dump you need:
+  #  * a dump_url
+  #  * a secret authentication header in the form of "Header: secret"
+  #
+  def import_pg_dump_via_app(app_name, dump_url, auth_header)
+    remote_command =
+      "sudo apt-get install postgresql-client -y && "\
+      "echo \"*:*:*:${PG_PASSWORD}\" > ~/.pgpass && chmod 600 ~/.pgpass && "\
+      "curl #{dump_url} -H '#{auth_header}' | "\
+      "pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE}"
+    @tsuru_command.app_run_once(app_name, remote_command)
+    raise @tsuru_command.stderr if @tsuru_command.exit_status != 0
+  end
+
   private
 
   def app_deploy(path, app_name)
