@@ -179,8 +179,10 @@ namespace :teams do |ns|
             end
           end
         }
-        multitask :create_all => ns.tasks.select{|x| x.to_s.end_with? "create"}
-        multitask :remove_all => ns.tasks.select{|x| x.to_s.end_with? "remove"}
+        desc "Create all users in team #{teamname}"
+        multitask :create_all => (1..NUM_USERS).map { |user_i| "teams:#{teamname}:users:#{gen_username(teamname, user_i)}:create" }
+        desc "Remove all users in team #{teamname}"
+        multitask :remove_all => (1..NUM_USERS).map { |user_i| "teams:#{teamname}:users:#{gen_username(teamname, user_i)}:remove" }
       end
       task :create => [ "tsuru:login_admin" ] do |t|
         LOGGER.info("Create team #{teamname}")
