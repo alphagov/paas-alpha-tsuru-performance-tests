@@ -318,4 +318,37 @@ namespace "apps" do
       end
     }
   end
+  namespace "dm-buyer-frontend" do
+    (1..NUM_TEAMS).each { |team_i|
+      teamname = gen_team_name(team_i)
+      appname = "dm-buyer-frontend-#{teamname}"
+      namespace teamname do
+        task "deploy" => [ "tsuru:login_admin" ]  do
+          LOGGER.info("Deploying #{appname}")
+          api_token = "ourtoken"
+          search_api_token = "oursearchtoken"
+          api_url = "https://" + API_CLIENT.get_app_url("dm-api-#{teamname}")
+          search_api_url = "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
+          DEPLOY_CLIENT.deploy_app(
+            user: gen_user_hash(teamname, 5),
+            app: {
+              name: appname,
+              dir: File.join(REPOS_DIR, "digitalmarketplace-buyer-frontend"),
+              platform: "python"
+            },
+            env_vars: {
+              DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
+              DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
+              DM_DATA_API_AUTH_TOKEN: api_token,
+              DM_DATA_API_URL: api_url,
+              DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
+              DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+              DM_SEARCH_API_URL: search_api_url
+            },
+            units: UNITS_PER_APP
+          )
+        end
+      end
+    }
+  end
 end
