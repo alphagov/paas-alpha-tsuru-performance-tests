@@ -114,14 +114,12 @@ class TsuruDeployClient
   def remove_app(app:, postgres: '')
     self.logger.info("Going to remove #{app[:name]}")
 
-    if not api_client.list_apps().include? app[:name]
+    if api_client.list_apps().include? app[:name]
       self.logger.warn("Application #{app[:name]} does not exist " \
                        "on the platform #{app[:platform]}")
-      return
+      tsuru_command.app_remove(app[:name])
+      raise tsuru_command.stderr if tsuru_command.exit_status != 0
     end
-
-    tsuru_command.app_remove(app[:name])
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
 
     if postgres != ''
       logger.info "Remove service #{postgres}"
