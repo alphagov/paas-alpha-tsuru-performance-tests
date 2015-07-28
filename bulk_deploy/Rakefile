@@ -542,7 +542,7 @@ namespace "team_deployment" do
             LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
             failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
             LOGGER.error(e.message)
-            LOGGER.debug(e.backtrace)
+            LOGGER.debug(e.backtrace.join("\n\t"))
             stop_execution if STOP_ON_ERROR
             break
           end
@@ -559,7 +559,7 @@ namespace "team_deployment" do
             LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
             failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
             LOGGER.error(e.message)
-            LOGGER.debug(e.backtrace)
+            LOGGER.debug(e.backtrace.join("\n\t"))
             stop_execution if STOP_ON_ERROR
             break
           end
