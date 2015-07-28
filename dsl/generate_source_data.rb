@@ -125,7 +125,6 @@ api_client.login 'administrator@gds.tsuru.gov', 'admin123'
 logger.info("Get list of applications")
 apps = api_client.list_apps
 
-apps = ['dm-buyer-frontend-app-1', 'dm-buyer-frontend-app-2']
 logger.info("Found #{apps.size} applications")
 
 logger.info("Sort applications")
