@@ -597,7 +597,7 @@ namespace "team_deployment" do
 end
 
 desc "Bring up all the environment"
-task "deploy" => [ "teams:create_all", "team_deployment:deploy_parallel" ]
+task "deploy" => [ "clone:all", "teams:create_all", "team_deployment:deploy_parallel" ]
 desc "Bring down all the environment"
-task "destroy" => [ "teams:remove_all", "team_deployment:remove_parallel", "workdir:clean" ]
+task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
 
