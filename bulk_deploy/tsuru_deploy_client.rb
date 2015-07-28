@@ -27,6 +27,7 @@ class TsuruDeployClient
       host: TSURU_HOST
     )
 
+    FileUtils.mkdir_p(tsuru_home)
     @tsuru_output = File.open(File.join(tsuru_home, "output"), 'a')
     logger.info("Output file for #{tsuru_user} = #{@tsuru_output.path}")
     @tsuru_command = TsuruCommandLine.new(
