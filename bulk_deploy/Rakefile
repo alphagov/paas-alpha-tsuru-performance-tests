@@ -493,7 +493,7 @@ namespace "apps" do
         units: UNITS_PER_APP
       )
     end
-    desc "Remove Datamarket Admin frontend - dm-buyer-frontend"
+    desc "Remove Datamarket Admin frontend - dm-admin-frontend"
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
@@ -608,4 +608,3 @@ desc "Bring up all the environment"
 task "deploy" => [ "clone:all", "teams:create_all", "pre_app_deploy:postgresapi_set_web_concurrency", "team_deployment:deploy_parallel" ]
 desc "Bring down all the environment"
 task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
-
