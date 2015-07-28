@@ -233,3 +233,16 @@ export SSL_CERT_FILE=`python -m certifi`
 ### DataMarket Api cannot be deploy after importing DB
 
 The deployment will try to run a DB migration and will fail. Pending investigation.
+
+### Issues binding the postgres service instance
+
+Postgresapi has [some](https://github.com/tsuru/postgres-api/issues/1)
+[bugs](https://github.com/tsuru/postgres-api/issues/13) which might appear while deploying the app.
+
+Some cases:
+
+```
+ERROR -- : uncaught throw #<StandardError: {"Message":"","Error":"Failed to bind the instance \"bulkt2-dm-api-db\" to the app \"dm-api-bulkt2\": role \"bulkt2_dm_c4e9c4\" already exists\n"}
+```
+
+Workaround: Try to remove the service with: `tsuru service-remove bulkt2-dm-api-db` and rerun the deployment.
