@@ -335,7 +335,7 @@ namespace "apps" do
       pg_dump_auth_header= ENV['dm_api_pg_dump_auth_header'] || raise("You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API")
 
       LOGGER.info("Importing #{pg_dump_url} in service of #{appname}")
-      deploy_client.import_pg_dump_via_app(appname, pg_dump_url, pg_dump_auth_header)
+      deploy_client.import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
     end
 
     # Aggregates both tasks

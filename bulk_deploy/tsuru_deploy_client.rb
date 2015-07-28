@@ -134,38 +134,6 @@ class TsuruDeployClient
     end
   end
 
-  def import_pg_dump(app_name, postgres_instance_name)
-    # Download database dump from S3
-    File.open(File.join(tsuru_home, "full.dump"), "wb") do |file|
-      reap = Aws::S3::Client.new.get_object(
-        {
-          bucket:"digital-marketplace-stuff",
-          key: "full.dump"
-        },
-        target: file
-      )
-    end
-
-    postgres_ip = api_client.get_env_vars(app_name)["PG_HOST"]
-    db_name = api_client.get_env_vars(app_name)["PG_DATABASE"]
-    # Ugly hack incoming!
-    ssh_config_dir = `find ~ -name tsuru-ansible | head -n 1 | tr -d '\n'`
-
-    # Use scp to upload the database dump to posgres box
-    scp_cmd = "cd #{ssh_config_dir} && scp -F ssh.config "\
-      "#{tsuru_home}/full.dump #{postgres_ip}:~/full.dump"
-    self.logger.info("SCP postgres dump file over: #{scp_cmd}")
-    if !system(scp_cmd)
-      raise "Failed to upload database dump via scp"
-    end
-
-    # Run pg_restore on the postgres box to load the data
-    restore_cmd = "cd #{ssh_config_dir} && ssh -F ssh.config #{postgres_ip} "\
-                  "'pg_restore -a -U postgres -d #{db_name} -a --disable-triggers ~/full.dump'"
-    self.logger.info("Let's restore the data from backup: #{restore_cmd}")
-    system(restore_cmd)
-  end
-
   # Uses tsuru app-run command to download and import the DB dump.
   #
   # To download the DB dump you need:
@@ -174,7 +142,7 @@ class TsuruDeployClient
   #
   # As pg_restore returns errors, we check that the DB is imported by querying one table
   #
-  def import_pg_dump_via_app(app_name, dump_url, auth_header)
+  def import_pg_dump(app_name, dump_url, auth_header)
     remote_command =
       "sudo apt-get install postgresql-client -y && "\
       "echo \"*:*:*:${PG_PASSWORD}\" > ~/.pgpass && chmod 600 ~/.pgpass && "\
