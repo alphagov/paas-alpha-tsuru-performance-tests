@@ -16,51 +16,6 @@ class TsuruAPIService
     return @logger
   end
 
-  def create_teams_and_users(team_count:, users_per_team:)
-    team_users = {}
-
-    # Login as administrator first
-    self.logger.info('Login as administrator')
-    self.api_client.login('administrator@gds.tsuru.gov', 'admin123')
-
-    # Create teams and users
-    i = 0
-    team_count.times do
-      self.logger.info("Create team #{i} [#{team_count} teams in total]")
-      team = "testteam" + Time.now.to_i.to_s.reverse
-
-      create_team(team)
-
-      team_users[team] = []
-
-      users_per_team.times do
-        self.logger.info("Create user #{i}, [#{users_per_team} users per team]")
-        email = "testuser#{i}@#{team}.co.uk"
-        password = "password"
-
-        create_user(email, password, team)
-
-        user = {
-          email: email,
-          password: password,
-          team: team
-        }
-        team_users[team].push(user)
-
-        i += 1
-      end
-    end
-
-    # Add keys to users
-    team_users.each do |team,users|
-      for user in users
-        add_key_to_user(user)
-      end
-    end
-
-    return team_users
-  end
-
   def create_team(team)
     # Create a team
     unless self.api_client.list_teams().include? team
