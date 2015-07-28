@@ -20,7 +20,7 @@ test do
 
   # Flask
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'flask.csv',
+    csv_data_set_config filename: 'flask-apps.csv',
                         variableNames: 'flask_url'
     visit name: 'Flask app home page', url: '${flask_url}' do
       assert contains: "Flasktest"
@@ -49,7 +49,7 @@ test do
 
   # Java
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'java.csv',
+    csv_data_set_config filename: 'java-apps.csv',
                         variableNames: 'java_url'
     visit name: 'Java app home page', url: '${java_url}'
     assert contains: 'Powered by'
@@ -64,38 +64,24 @@ test do
 
   # Digital marketplace admin
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'dm-admin-frontend.csv',
+    csv_data_set_config filename: 'dm-admin-frontend-apps.csv',
                         variableNames: 'dm_admin_url'
     visit name: 'Visiting ${dm_admin_url}', url: '${dm_admin_url}'
   end
 
   # Digital marketplace buyer
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'dm-buyer-frontend.csv',
+    csv_data_set_config filename: 'dm-buyer-frontend-apps.csv',
                         variableNames: 'dm_buyer_url'
     visit name: 'Visiting ${dm_buyer_url}', url: '${dm_buyer_url}'
   end
 
   # Digital marketplace supplier
   threads count: thread_count, loops: loop_count do
-    csv_data_set_config filename: 'dm-supplier-frontend.csv',
+    csv_data_set_config filename: 'dm-supplier-frontend-apps.csv',
                         variableNames: 'dm_supplier_url'
     visit name: 'Visiting ${dm_supplier_url}', url: '${dm_supplier_url}'
   end
-
-  # # Digital marketplace API
-  # threads count: thread_count, loops: loop_count do
-  #   csv_data_set_config filename: 'dm-api.csv',
-  #                       variableNames: 'dm_api_url'
-  #   visit name: 'Visiting ${dm_api_url}', url: '${dm_api_url}'
-  # end
-
-  # # Digital marketplace Search API
-  # threads count: thread_count, loops: loop_count do
-  #   csv_data_set_config filename: 'dm-search-api.csv',
-  #                       variableNames: 'dm_search_api_url'
-  #   visit name: 'Visiting ${dm_search_api_url}', url: '${dm_search_api_url}'
-  # end
 
   view_results_tree
 
