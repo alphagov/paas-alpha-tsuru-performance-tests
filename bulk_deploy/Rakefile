@@ -27,7 +27,6 @@ DEFAULT_USER_PASSWORD = ENV['default_user_password'] || "password"
 # datamarket Specific options
 DM_API_TOKEN = ENV['dm_api_token'] || "ourtoken"
 DM_SEARCH_API_TOKEN = ENV['dm_search_api_token'] || "oursearchtoken"
-DM_SEARCH_API_URL = ENV['dm_search_api_url'] || "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
 
 # stop execution on error
 STOP_ON_ERROR = ENV["stop_on_error"] || false
