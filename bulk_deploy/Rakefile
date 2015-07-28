@@ -303,6 +303,47 @@ namespace "apps" do
       )
     end
   end
+  namespace "dm-search-api" do
+    desc "Deploy Datamarket Search API (no es dump) - dm-search-api"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      search_api_token = DM_SEARCH_API_TOKEN
+
+      LOGGER.info("Deploying #{appname}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-search-api"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+        },
+        elasticsearch: servicename,
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Search API - dm-search-api"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        },
+        elasticsearch: servicename,
+      )
+    end
+  end
   namespace "dm-api" do
     desc "Deploy Datamarket API (no db dump) - dm-api"
     task "deploy_app", [ :teamname, :username ] do |t, args|
@@ -314,7 +355,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
       deploy_client.deploy_app(
@@ -344,6 +385,16 @@ namespace "apps" do
 
       LOGGER.info("Importing #{pg_dump_url} in service of #{appname}")
       deploy_client.import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
+    end
+
+    desc "Import Data To Elasticsearch"
+    task "import_elasticsearch" do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      from_appname = "dm-api-#{teamname}"
+      to_appname = "dm-search0api-#{teamname}"
+      deploy_client.import_elasticsearch_data(from_appname, to_appname)
     end
 
     # Aggregates both tasks
@@ -379,7 +430,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
@@ -427,7 +478,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -472,7 +523,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -515,6 +566,7 @@ end
 app_list = [
   "flask-app",
   "java-app",
+  "dm-search-api",
   "dm-api",
   "dm-supplier-frontend",
   "dm-buyer-frontend",

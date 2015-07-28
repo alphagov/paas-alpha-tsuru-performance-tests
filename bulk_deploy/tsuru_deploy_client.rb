@@ -51,7 +51,7 @@ class TsuruDeployClient
 
   end
 
-  def deploy_app(app:, env_vars: {}, postgres: '', git: false, units: 3)
+  def deploy_app(app:, env_vars: {}, postgres: '', elasticsearch: '', git: false, units: 3)
     self.logger.info("Going to deploy #{app[:name]}. Check #{@tsuru_output.path} for output.")
 
     if not api_client.list_apps().include? app[:name]
@@ -73,16 +73,11 @@ class TsuruDeployClient
       end
 
       if postgres != ''
-        instance_name = postgres
-        unless api_client.list_service_instances().include? instance_name
-          self.logger.info("Add postgres service instance #{instance_name}")
-          api_client.add_service_instance("postgresql", instance_name)
-        end
+        bind_service_to_app("postgresql", postgres, app)
+      end
 
-        unless api_client.app_has_service(app[:name], instance_name)
-          self.logger.info("Bind service #{instance_name} to #{app[:name]}")
-          api_client.bind_service_to_app(instance_name, app[:name])
-        end
+      if elasticsearch != ''
+        bind_service_to_app("elasticsearch", elasticsearch, app)
       end
 
       if git
@@ -112,7 +107,19 @@ class TsuruDeployClient
     self.logger.info("Finished deploying #{app[:name]}")
   end
 
-  def remove_app(app:, postgres: '')
+  def bind_service_to_app(service_name, instance_name, app)
+    unless api_client.list_service_instances().include? instance_name
+      self.logger.info("Add #{service_name} service instance #{instance_name}")
+      api_client.add_service_instance(service_name, instance_name)
+    end
+
+    unless api_client.app_has_service(app[:name], instance_name)
+      self.logger.info("Bind service #{instance_name} to #{app[:name]}")
+      api_client.bind_service_to_app(instance_name, app[:name])
+    end
+  end
+
+  def remove_app(app:, postgres: '', elasticsearch: '')
     self.logger.info("Going to remove #{app[:name]}")
 
     if api_client.list_apps().include? app[:name]
@@ -123,15 +130,23 @@ class TsuruDeployClient
     end
 
     if postgres != ''
-      logger.info "Remove service #{postgres}"
-      retries=5
-      begin
-        sleep 1
-        api_client.remove_service_instance(postgres)
-      rescue Exception => e
-        retry if (retries -= 2) > 0
-        logger.error "Cannot remove service #{postgres}. Exception: #{e}"
-      end
+      remove_service(postgres)
+    end
+
+    if elasticsearch != ''
+      remove_service(elasticsearch)
+    end
+  end
+
+  def remove_service(service)
+    logger.info "Remove service #{service}"
+    retries=5
+    begin
+      sleep 1
+      api_client.remove_service_instance(service)
+    rescue Exception => e
+      retry if (retries -= 2) > 0
+      logger.error "Cannot remove service #{service}. Exception: #{e}"
     end
   end
 
@@ -150,6 +165,16 @@ class TsuruDeployClient
       "curl #{dump_url} -H '#{auth_header}' | "\
       "( pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE} || "\
       "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from users;' | grep -q t )"
+    tsuru_command.app_run_once(app_name, remote_command)
+    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+  end
+
+  def import_elasticsearch_data(pg_app_name, es_app_name)
+    search_api_url = "https://" + api_client.get_app_url(es_app_name)
+    search_api_token = api_client.get_env_vars(es_app_name)["DM_SEARCH_API_AUTH_TOKEN"]
+    api_url = "https://" + api_client.get_app_url(pg_app_name)
+    api_token = api_client.get_env_vars(pg_app_name)["DM_API_AUTH_TOKENS"]
+    remote_command = "python scripts/index_services.py #{search_api_url} #{search_api_token} #{api_url} #{api_token}"
     tsuru_command.app_run_once(app_name, remote_command)
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
