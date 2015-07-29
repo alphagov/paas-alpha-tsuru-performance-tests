@@ -616,8 +616,8 @@ namespace "team_deployment" do
           begin
             task("team_deployment:#{teamname}:#{app}:remove").invoke
           rescue Exception => e
-            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
-            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:remove")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:remove"
             LOGGER.error(e.message)
             LOGGER.debug(e.backtrace.join("\n\t"))
             stop_execution if STOP_ON_ERROR
