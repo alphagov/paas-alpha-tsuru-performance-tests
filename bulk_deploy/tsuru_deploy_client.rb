@@ -172,10 +172,11 @@ class TsuruDeployClient
   def import_elasticsearch_data(pg_app_name, es_app_name)
     search_api_url = "https://" + api_client.get_app_url(es_app_name)
     search_api_token = api_client.get_env_vars(es_app_name)["DM_SEARCH_API_AUTH_TOKEN"]
-    api_url = "https://" + api_client.get_app_url(pg_app_name)
+    api_url = "http://0.0.0.0:8888"
     api_token = api_client.get_env_vars(pg_app_name)["DM_API_AUTH_TOKENS"]
-    remote_command = "python scripts/index_services.py #{search_api_url} #{search_api_token} #{api_url} #{api_token}"
-    tsuru_command.app_run_once(app_name, remote_command)
+    remote_command = "python scripts/index_services.py #{search_api_url} #{search_api_token} #{api_url} #{api_token} --serial"
+    print remote_command
+    tsuru_command.app_run_once(pg_app_name, remote_command)
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
   end
 

@@ -321,7 +321,7 @@ namespace "apps" do
           platform: "python"
         },
         env_vars: {
-          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_AUTH_TOKENS: search_api_token,
         },
         elasticsearch: servicename,
         units: UNITS_PER_APP
@@ -384,16 +384,6 @@ namespace "apps" do
 
       LOGGER.info("Importing #{pg_dump_url} in service of #{appname}")
       deploy_client.import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
-    end
-
-    desc "Import Data To Elasticsearch"
-    task "import_elasticsearch" do |t, args|
-      teamname = args[:teamname]
-      username = args[:username]
-      deploy_client = get_deploy_client(username)
-      from_appname = "dm-api-#{teamname}"
-      to_appname = "dm-search0api-#{teamname}"
-      deploy_client.import_elasticsearch_data(from_appname, to_appname)
     end
 
     # Aggregates both tasks
@@ -557,6 +547,17 @@ namespace "apps" do
       )
     end
   end
+  namespace "post-deploy-tasks" do
+    teamname = gen_team_name(1)
+    username = gen_username(teamname, 1)
+    desc "Import Data To Elasticsearch"
+    task "import_elasticsearch" do |t, args|
+      deploy_client = get_deploy_client(username)
+      from_appname = "dm-api-#{teamname}"
+      to_appname = "dm-search-api-#{teamname}"
+      deploy_client.import_elasticsearch_data(from_appname, to_appname)
+    end
+  end
 
 end
 
@@ -656,6 +657,16 @@ namespace "team_deployment" do
 end
 
 desc "Bring up all the environment"
-task "deploy" => [ "clone:all", "teams:create_all", "pre_app_deploy:postgresapi_set_web_concurrency", "team_deployment:deploy_parallel" ]
+task "deploy" => [
+  "clone:all",
+  "teams:create_all",
+  "pre_app_deploy:postgresapi_set_web_concurrency"
+  "team_deployment:deploy_parallel",
+  "apps:post-deploy-tasks:import_elasticsearch"
+]
 desc "Bring down all the environment"
-task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
+task "destroy" => [
+  "team_deployment:remove_parallel",
+  "teams:remove_all",
+  "workdir:clean"
+]
