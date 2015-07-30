@@ -16,53 +16,6 @@ class TsuruAPIService
     return @logger
   end
 
-  def create_teams_and_users(team_count:, users_per_team:)
-    team_users = {}
-
-    # Login as administrator first
-    self.logger.info('Login as administrator')
-    self.api_client.login('administrator@gds.tsuru.gov', 'admin123')
-
-    # Create teams and users
-    i = 0
-    team_count.times do
-      self.logger.info("Create team #{i} [#{team_count} teams in total]")
-      team = "testteam" + Time.now.to_i.to_s.reverse
-
-      create_team(team)
-
-      team_users[team] = []
-
-      users_per_team.times do
-        self.logger.info("Create user #{i}, [#{users_per_team} users per team]")
-        email = "testuser#{i}@#{team}.co.uk"
-        password = "password"
-
-        create_user(email, password, team)
-
-        user = {
-          email: email,
-          password: password,
-          team: team
-        }
-        team_users[team].push(user)
-
-        i += 1
-      end
-    end
-
-    # Add keys to users
-    team_users.each do |team,users|
-      for user in users
-        add_key_to_user(user)
-      end
-    end
-
-    return team_users
-  end
-
-  private
-
   def create_team(team)
     # Create a team
     unless self.api_client.list_teams().include? team
@@ -91,8 +44,8 @@ class TsuruAPIService
     self.logger.info("Add public key for user #{user[:email]}")
     ssh_id_rsa_path = File.join(@tsuru_home, '.ssh', "id_rsa_#{user[:email]}")
     ssh_id_rsa_pub_path = File.join(@tsuru_home, '.ssh', "id_rsa_#{user[:email]}.pub")
-    ssh_config_file = File.join(@tsuru_home, '.ssh', 'config')
-    ssh_wrapper_path = File.join(@tsuru_home, 'ssh-wrapper')
+    ssh_config_file = File.join(@tsuru_home, '.ssh', "#{user[:email]}-config")
+    ssh_wrapper_path = user[:ssh_wrapper]
 
     # Generate a new ssh key
     SshHelper.generate_key(ssh_id_rsa_path)
@@ -110,10 +63,13 @@ class TsuruAPIService
       .gsub(/-----BEGIN PUBLIC KEY-----/, '')
       .gsub(/-----END PUBLIC KEY-----/, '')
 
-    self.api_client.login(user[:email], user[:password])
-    self.api_client.add_key(public_key)
+    new_api_client = self.api_client.clone
+    new_api_client.login(user[:email], user[:password])
+    new_api_client.add_key(public_key)
 
     user[:key] = ssh_id_rsa_path
+    user[:ssh_wrapper] = ssh_wrapper_path
+    user
   end
 
 end

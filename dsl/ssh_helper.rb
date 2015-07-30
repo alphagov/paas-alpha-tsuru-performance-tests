@@ -2,7 +2,8 @@ class SshHelper
   # Create our own SSH key
   def self.generate_key(path)
     FileUtils.mkdir_p(File.dirname(path))
-    system("ssh-keygen -f #{path} -q -N '' ")
+    File.delete(path) if File.exists?(path)
+    system("yes y | ssh-keygen -f #{path} -q -N '' ")
   end
 
   # Generate some custom configuration for SSH
@@ -21,8 +22,7 @@ class SshHelper
   # specify the configuration file we need to create a wrapper
   def self.write_ssh_wrapper(wrapper_path, config_path)
     File.open(wrapper_path, "w") do |f|
-      f.write("""
-#!/bin/bash
+      f.write("""#!/bin/bash
 ssh -F #{config_path} $@
 """)
     end

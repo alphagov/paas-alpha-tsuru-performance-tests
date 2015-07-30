@@ -1,0 +1,611 @@
+$LOAD_PATH << File.join(File.dirname(__FILE__))
+require 'rake'
+require 'logger'
+require 'git_helper'
+require 'tsuru_api_client'
+require 'tsuru_api_service'
+require 'tsuru_deploy_client'
+
+
+#####################################################################
+# Runtime configuration
+# Environment config
+ENVIRONMENT = ENV['environment'] || raise("Must pass environment=...")
+TSURU_HOST = ENV['host'] || raise("Must pass host=...")
+
+ADMIN_USER = ENV["admin_user"] || 'administrator@gds.tsuru.gov'
+ADMIN_PASS = ENV["admin_pass"] || raise("Must pass admin_pass=...")
+
+# Environment size config
+NUM_TEAMS = (ENV["num_teams"] || 3).to_i
+NUM_USERS = (ENV["num_users"] || 10).to_i
+UNITS_PER_APP = (ENV["units_per_app"] || 3).to_i
+
+# Default password for users
+DEFAULT_USER_PASSWORD = ENV['default_user_password'] || "password"
+
+# datamarket Specific options
+DM_API_TOKEN = ENV['dm_api_token'] || "ourtoken"
+DM_SEARCH_API_TOKEN = ENV['dm_search_api_token'] || "oursearchtoken"
+DM_SEARCH_API_URL = ENV['dm_search_api_url'] || "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
+
+# stop execution on error
+STOP_ON_ERROR = ENV["stop_on_error"] || false
+
+WORKING_DIR = ENV["workdir"] || "/tmp/workdir"
+REPOS_DIR = File.join(WORKING_DIR, "repos")
+VERBOSE = (ENV["VERBOSE"] && ENV["VERBOSE"].downcase == "true") || false
+LOGGER = Logger.new(STDOUT)
+if VERBOSE
+  LOGGER.level = Logger::DEBUG
+else
+  LOGGER.level = Logger::INFO
+end
+# Apps and repositories
+APPS = [
+  {
+    app: "example-java-jetty",
+    repo: "https://github.com/alphagov/example-java-jetty"
+  },
+  {
+    app: "flask-sqlalchemy-postgres-heroku-example",
+    repo: "https://github.com/alphagov/flask-sqlalchemy-postgres-heroku-example"
+  },
+  {
+    app: "digitalmarketplace-api",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-api"
+  },
+  {
+    app: "digitalmarketplace-search-api",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-search-api"
+  },
+  {
+    app: "digitalmarketplace-supplier-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-supplier-frontend"
+  },
+  {
+    app: "digitalmarketplace-buyer-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-buyer-frontend"
+  },
+  {
+    app: "digitalmarketplace-admin-frontend",
+    repo: "https://github.com/alphagov/multicloud-digitalmarketplace-admin-frontend"
+  }
+]
+
+
+########################################################################
+# Helper functions
+
+def gen_team_name(index)
+  "bulkt#{index}"
+end
+
+def gen_username(teamname, index)
+  "user#{index}@#{teamname}.site.com"
+end
+
+# SSH wrapper per user: one per user
+def ssh_wrapper_for_user(username)
+  File.join(WORKING_DIR, "#{username}-ssh-wrapper")
+end
+
+# Cached deploy client per username
+@deploy_clients = {}
+def get_deploy_client(username)
+  if @deploy_clients[username].nil?
+    @deploy_clients[username] = TsuruDeployClient.new(
+      logger: LOGGER,
+      tsuru_user: username,
+      tsuru_password: DEFAULT_USER_PASSWORD,
+      ssh_wrapper: ssh_wrapper_for_user(username),
+      working_dir: WORKING_DIR,
+      environment: ENVIRONMENT,
+      host: TSURU_HOST
+    )
+  end
+  @deploy_clients[username]
+end
+
+# Control parallel run
+@stop_execution = false
+def stop_execution
+  @stop_execution = true
+end
+
+def execution_stopped?
+  @stop_execution
+end
+
+########################################################################
+namespace :workdir do
+  desc "Create working directory"
+  task :create do
+    FileUtils.mkdir_p WORKING_DIR
+  end
+  desc "Clean up the working directory"
+  task :clean do
+    FileUtils.rm_rf WORKING_DIR
+  end
+end
+
+namespace :clone do |ns|
+  APPS.each { |entry|
+    desc "Clone repository #{entry[:repo]} for app #{entry[:app]}"
+    task "clone_#{entry[:app]}" do |t|
+      repo_dir = File.join(REPOS_DIR, entry[:app])
+      git_command = GitCommandLine.new(repo_dir, {}, { :verbose => VERBOSE })
+      if (File.directory?(repo_dir))
+        LOGGER.debug "#{t}: Updating #{entry[:repo]} in #{repo_dir}"
+        git_command.pull
+        raise git_command.stdouterr if git_command.exit_status != 0
+      else
+        LOGGER.debug "#{t}: Cloning #{entry[:repo]} in #{repo_dir}"
+        git_command.clone(entry[:repo])
+        raise git_command.stdouterr if git_command.exit_status != 0
+      end
+    end
+  }
+  desc "Clone all repos"
+  multitask :all => ns.tasks do
+    LOGGER.info "All repos cloned and updated."
+  end
+end
+
+namespace :tsuru do
+  desc "Login as admin for consecutive tasks"
+  task :login_admin do
+    @api_client = TsuruAPIClient.new(
+      logger: LOGGER,
+      environment: ENVIRONMENT,
+      host: TSURU_HOST
+    )
+    @api_service = TsuruAPIService.new(
+      logger: LOGGER,
+      api_client: @api_client,
+      tsuru_home: WORKING_DIR
+    )
+    @api_client.login(ADMIN_USER, ADMIN_PASS)
+  end
+end
+
+namespace :teams do |ns|
+  (1..NUM_TEAMS).each { |team_i|
+    teamname = gen_team_name(team_i)
+    namespace teamname do
+      namespace_name = "teams:#{teamname}" # I did not find a better way
+      namespace :users do |ns|
+        (1..NUM_USERS).each { |user_i|
+          username = gen_username(teamname, user_i)
+          namespace username do
+            desc "Create user #{username} in team #{teamname}"
+            task :create => [ "tsuru:login_admin" ] do
+              LOGGER.info("Create user #{username}")
+              @api_service.create_user(username, "password", teamname)
+              user = {
+                email: username,
+                password: "password",
+                team: teamname,
+                ssh_wrapper: ssh_wrapper_for_user(username)
+              }
+              @api_service.add_key_to_user(user)
+            end
+            desc "Remove user #{username} in team #{teamname}"
+            task :remove => [ "tsuru:login_admin" ] do
+              LOGGER.info("Remove user #{username}")
+              @api_client.remove_user(username)
+            end
+          end
+        }
+        desc "Create all users in team #{teamname}"
+        multitask :create_all => (1..NUM_USERS).map { |user_i| "teams:#{teamname}:users:#{gen_username(teamname, user_i)}:create" }
+        desc "Remove all users in team #{teamname}"
+        multitask :remove_all => (1..NUM_USERS).map { |user_i| "teams:#{teamname}:users:#{gen_username(teamname, user_i)}:remove" }
+      end
+      desc "Create team #{teamname}"
+      task :create => [ "tsuru:login_admin" ] do |t|
+        LOGGER.info("Create team #{teamname}")
+        @api_service.create_team(teamname)
+        ns["#{namespace_name}:users:create_all"].invoke
+      end
+      desc "Remove team #{teamname}"
+      task :remove => [ "tsuru:login_admin", "#{namespace_name}:users:remove_all" ] do
+        LOGGER.info("Remove team #{teamname}")
+        @api_client.remove_team(teamname)
+      end
+    end
+  }
+
+  desc "Create all teams and its users"
+  multitask :create_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:create/ }
+  desc "Remove all teams and its users"
+  multitask :remove_all => ns.tasks.select{|x| x.to_s =~ /teams:[^:]*:remove/}
+end
+
+namespace "pre_app_deploy" do
+  task "postgresapi_set_web_concurrency" => [ "tsuru:login_admin" ] do
+    web_concurrency = 4
+    LOGGER.info "Setting WEB_CONCURRENCY=#{web_concurrency} for postgresapi"
+    @api_client.set_env_var("postgresapi", 'WEB_CONCURRENCY', web_concurrency.to_s)
+  end
+end
+
+namespace "apps" do
+  namespace "flask-app" do
+    desc "Deploy the flask-app"
+    task :deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "flask-app-#{teamname}"
+      servicename = "#{teamname}-flask-app-db"
+      LOGGER.info("#{teamname}: Deploying #{appname} with service #{servicename}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
+          platform: "python"
+        },
+        postgres: servicename,
+        git: true,
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove the flask-app"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "flask-app-#{teamname}"
+      servicename = "#{teamname}-flask-app-db"
+
+      LOGGER.info("#{teamname}: Removing #{appname} with service #{servicename}")
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
+          platform: "python"
+        },
+        postgres: servicename
+      )
+    end
+  end
+  namespace "java-app" do
+    desc "Deploy the java-app"
+    task :deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "java-app-#{teamname}"
+
+      LOGGER.info("#{teamname}: Deploying #{appname}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "example-java-jetty"),
+          platform: "java"
+        },
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove the java-app"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "java-app-#{teamname}"
+
+      LOGGER.info("#{teamname}: Removing #{appname}")
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        }
+      )
+    end
+  end
+  namespace "dm-api" do
+    desc "Deploy Datamarket API (no db dump) - dm-api"
+    task "deploy_app", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-api-#{teamname}"
+      servicename = "#{teamname}-dm-api-db"
+
+      api_token = DM_API_TOKEN
+      search_api_token = DM_SEARCH_API_TOKEN
+      search_api_url = DM_SEARCH_API_URL
+
+      LOGGER.info("Deploying #{appname}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-api"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_API_AUTH_TOKENS: api_token,
+          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_URL: search_api_url,
+        },
+        postgres: servicename,
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Import Datamarket API postgres DB"
+    task "import_pg_dump" do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-api-#{teamname}"
+
+      pg_dump_url= ENV['dm_api_pg_dump_url'] || raise("You must pass dm_api_pg_dump_url=... with the url to the db dump for DM API")
+      pg_dump_auth_header= ENV['dm_api_pg_dump_auth_header'] || raise("You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API")
+
+      LOGGER.info("Importing #{pg_dump_url} in service of #{appname}")
+      deploy_client.import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
+    end
+
+    # Aggregates both tasks
+    desc "Deploy Datamarket API and import DB - dm-api"
+    task "deploy" do |t, args|
+      task("apps:dm-api:deploy_app").execute(args)
+      task("apps:dm-api:import_pg_dump").execute(args)
+    end
+
+    desc "Remove Datamarket API - dm-api"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-api-#{teamname}"
+      servicename = "#{teamname}-dm-api-db"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        },
+        postgres: servicename,
+      )
+    end
+  end
+  namespace "dm-supplier-frontend" do
+    desc "Deploy Datamarket Supplier frontend - dm-supplier-frontend"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-supplier-frontend-#{teamname}"
+
+      api_token = DM_API_TOKEN
+      search_api_token = DM_SEARCH_API_TOKEN
+      search_api_url = DM_SEARCH_API_URL
+      api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
+
+      LOGGER.info("Deploying #{appname}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-supplier-frontend"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
+          DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
+          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_URL: api_url,
+          DM_MANDRILL_API_KEY: "somekey",
+          DM_PASSWORD_SECRET_KEY: "verySecretKey",
+          DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
+          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_URL: search_api_url
+        },
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Supplier frontend - dm-supplier-frontend"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-supplier-frontend-#{teamname}"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        }
+      )
+    end
+  end
+  namespace "dm-buyer-frontend" do
+    desc "Deploy Datamarket Buyer frontend - dm-buyer-frontend"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-buyer-frontend-#{teamname}"
+
+      api_token = DM_API_TOKEN
+      search_api_token = DM_SEARCH_API_TOKEN
+      search_api_url = DM_SEARCH_API_URL
+      api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
+
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-buyer-frontend"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
+          DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
+          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_URL: api_url,
+          DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
+          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_URL: search_api_url
+        },
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Buyer frontend - dm-buyer-frontend"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-buyer-frontend-#{teamname}"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        }
+      )
+    end
+  end
+  namespace "dm-admin-frontend" do
+    desc "Deploy Datamarket Admin frontend - dm-buyer-frontend"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-admin-frontend-#{teamname}"
+
+      api_token = DM_API_TOKEN
+      search_api_token = DM_SEARCH_API_TOKEN
+      search_api_url = DM_SEARCH_API_URL
+      api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
+
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-admin-frontend"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
+          DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
+          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_URL: api_url,
+          DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
+          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_URL: search_api_url
+        },
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Admin frontend - dm-buyer-frontend"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-admin-frontend-#{teamname}"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        }
+      )
+    end
+  end
+
+end
+
+
+# Generate specific tasks to deploy apps in each team
+app_list = [
+  "flask-app",
+  "java-app",
+  "dm-api",
+  "dm-supplier-frontend",
+  "dm-buyer-frontend",
+  "dm-admin-frontend"
+]
+
+namespace "team_deployment" do
+  failed_tasks = []
+  (1..NUM_TEAMS).each { |team_i|
+    teamname = gen_team_name(team_i)
+    username= gen_username(teamname, 1) # use first user
+
+    namespace teamname do
+      app_list.each { |app|
+        namespace app do
+          task "deploy" => [ "tsuru:login_admin" ] do
+            # Note: there are differences between calling .invoke and .execute
+            # With execute you must pass a hash with the arguments
+            task("apps:#{app}:deploy").execute(teamname: teamname, username: username)
+          end
+          task "remove" => [ "tsuru:login_admin" ] do
+            task("apps:#{app}:remove").execute(teamname: teamname, username: username)
+          end
+        end
+      }
+      desc "Deploy all applications for team #{teamname}"
+      task "deploy_all" do
+        app_list.map { |app|
+          # Error tolerant per team
+          begin
+            task("team_deployment:#{teamname}:#{app}:deploy").invoke
+          rescue Exception => e
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error(e.message)
+            LOGGER.debug(e.backtrace.join("\n\t"))
+            stop_execution if STOP_ON_ERROR
+            break
+          end
+          break if execution_stopped?
+        }
+      end
+      desc "Remove all applications for team #{teamname}"
+      task "remove_all" do
+        app_list.map { |app|
+          # Error tolerant per team
+          begin
+            task("team_deployment:#{teamname}:#{app}:remove").invoke
+          rescue Exception => e
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error(e.message)
+            LOGGER.debug(e.backtrace.join("\n\t"))
+            stop_execution if STOP_ON_ERROR
+            break
+          end
+          break if execution_stopped?
+        }
+      end
+    end
+  }
+  desc "Deploy in parallel all applications for all teams"
+  multitask "deploy_parallel" =>
+  (1..NUM_TEAMS).map { |team_i|
+    teamname = gen_team_name(team_i)
+    "team_deployment:#{teamname}:deploy_all"
+  } do
+    if failed_tasks.empty?
+      LOGGER.info("Deployment finished OK")
+    else
+      LOGGER.error("Some tasks failed: " + failed_tasks.join(' '))
+      abort
+    end
+  end
+  desc "Remove in parallel all applications for all teams"
+  multitask "remove_parallel" =>
+  (1..NUM_TEAMS).map { |team_i|
+    teamname = gen_team_name(team_i)
+    "team_deployment:#{teamname}:remove_all"
+  } do
+    if failed_tasks.empty?
+      LOGGER.info("Removal finished OK")
+    else
+      LOGGER.error("Some tasks failed: " + failed_tasks.join(' '))
+      abort
+    end
+  end
+end
+
+desc "Bring up all the environment"
+task "deploy" => [ "clone:all", "teams:create_all", "pre_app_deploy:postgresapi_set_web_concurrency", "team_deployment:deploy_parallel" ]
+desc "Bring down all the environment"
+task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
+
