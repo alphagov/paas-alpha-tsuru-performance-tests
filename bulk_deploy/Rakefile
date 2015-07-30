@@ -34,12 +34,12 @@ STOP_ON_ERROR = ENV["stop_on_error"] || false
 
 WORKING_DIR = ENV["workdir"] || "/tmp/workdir"
 REPOS_DIR = File.join(WORKING_DIR, "repos")
-VERBOSE = ENV["VERBOSE"] || false
+VERBOSE = (ENV["VERBOSE"] && ENV["VERBOSE"].downcase == "true") || false
 LOGGER = Logger.new(STDOUT)
-if VERBOSE == true
-  LOGGER.level = Logger::INFO
-else
+if VERBOSE
   LOGGER.level = Logger::DEBUG
+else
+  LOGGER.level = Logger::INFO
 end
 # Apps and repositories
 APPS = [
