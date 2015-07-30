@@ -660,7 +660,7 @@ desc "Bring up all the environment"
 task "deploy" => [
   "clone:all",
   "teams:create_all",
-  "pre_app_deploy:postgresapi_set_web_concurrency"
+  "pre_app_deploy:postgresapi_set_web_concurrency",
   "team_deployment:deploy_parallel",
   "apps:post-deploy-tasks:import_elasticsearch"
 ]
