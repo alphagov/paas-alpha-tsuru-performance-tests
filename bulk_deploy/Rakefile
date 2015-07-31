@@ -192,8 +192,12 @@ namespace :teams do |ns|
             end
             desc "Remove user #{username} in team #{teamname}"
             task :remove => [ "tsuru:login_admin" ] do
-              LOGGER.info("Remove user #{username}")
-              @api_client.remove_user(username)
+              if @api_client.user_exists(username)
+                LOGGER.info("Remove user #{username}")
+                @api_client.remove_user(username)
+              else
+                LOGGER.info("User #{username} does not exist, not removing.")
+              end
             end
           end
         }
@@ -210,8 +214,13 @@ namespace :teams do |ns|
       end
       desc "Remove team #{teamname}"
       task :remove => [ "tsuru:login_admin", "#{namespace_name}:users:remove_all" ] do
-        LOGGER.info("Remove team #{teamname}")
-        @api_client.remove_team(teamname)
+        if @api_client.list_teams().include? teamname
+          LOGGER.info("Remove team #{teamname}")
+          @api_client.remove_team(teamname)
+        else
+          LOGGER.info("Team #{teamname} does not exist, not removing.")
+        end
+
       end
     end
   }
