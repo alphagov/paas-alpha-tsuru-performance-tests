@@ -94,6 +94,30 @@ class TsuruAPIClient
     )
   end
 
+  def remove_key(name)
+    request_json(
+      method: :delete,
+      path: "/users/keys",
+      params: {
+        :name => name,
+      }
+    )
+  end
+
+  def list_keys()
+    response = request_json(
+      method: :get,
+      path: "/users/keys"
+    )
+
+    keys = Array.new()
+    response.each do |key, val|
+      keys.push(key)
+    end
+
+    return keys
+  end
+
   def create_team(team)
     response = request_json(
       method: :post,
