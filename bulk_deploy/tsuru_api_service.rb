@@ -66,6 +66,10 @@ class TsuruAPIService
     new_api_client = self.api_client.clone
     new_api_client.login(user[:email], user[:password])
 
+    if new_api_client.list_keys().include? "rsa"
+      self.logger.info("Deleting old key 'rsa' for user #{user[:email]}")
+      new_api_client.remove_key("rsa")
+    end
     new_api_client.add_key("rsa", public_key)
 
     user[:key] = ssh_id_rsa_path
