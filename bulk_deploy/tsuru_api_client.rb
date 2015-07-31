@@ -83,13 +83,13 @@ class TsuruAPIClient
     return false
   end
 
-  def add_key(pubkey)
+  def add_key(name, pubkey)
     request_json(
       method: :post,
       path: "/users/keys",
       params: {
         :key => pubkey,
-        :name => "rsa",
+        :name => name,
       }
     )
   end
