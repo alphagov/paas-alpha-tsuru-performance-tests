@@ -95,6 +95,7 @@ class TsuruDeployClient
       else
         self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
         tsuru_command.app_deploy(app[:name], app[:dir], '*')
+        raise tsuru_command.stderr if tsuru_command.exit_status != 0
       end
     end
 
