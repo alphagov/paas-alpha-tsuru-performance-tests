@@ -101,6 +101,10 @@ class TsuruAPIClient
     )
   end
 
+  def has_key()
+    get_keys().has_key?("rsa")
+  end
+
   def remove_key()
     request_json(
       method: :delete,
