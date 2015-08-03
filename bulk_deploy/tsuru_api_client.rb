@@ -94,6 +94,23 @@ class TsuruAPIClient
     )
   end
 
+  def get_keys()
+    request_json(
+      method: :get,
+      path: "/users/keys",
+    )
+  end
+
+  def remove_key()
+    request_json(
+      method: :delete,
+      path: "/users/keys",
+      params: {
+        :name => "rsa",
+      }
+    )
+  end
+
   def create_team(team)
     response = request_json(
       method: :post,
