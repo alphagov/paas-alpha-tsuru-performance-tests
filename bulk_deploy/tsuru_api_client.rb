@@ -103,7 +103,7 @@ class TsuruAPIClient
       }
     )
   end
-
+  
   def list_keys()
     response = request_json(
       method: :get,

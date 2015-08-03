@@ -27,7 +27,6 @@ DEFAULT_USER_PASSWORD = ENV['default_user_password'] || "password"
 # datamarket Specific options
 DM_API_TOKEN = ENV['dm_api_token'] || "ourtoken"
 DM_SEARCH_API_TOKEN = ENV['dm_search_api_token'] || "oursearchtoken"
-DM_SEARCH_API_URL = ENV['dm_search_api_url'] || "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
 
 # stop execution on error
 STOP_ON_ERROR = ENV["stop_on_error"] || false
@@ -312,6 +311,47 @@ namespace "apps" do
       )
     end
   end
+  namespace "dm-search-api" do
+    desc "Deploy Datamarket Search API (no es dump) - dm-search-api"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      search_api_token = DM_SEARCH_API_TOKEN
+
+      LOGGER.info("Deploying #{appname}")
+      deploy_client.deploy_app(
+        app: {
+          name: appname,
+          dir: File.join(REPOS_DIR, "digitalmarketplace-search-api"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_SEARCH_API_AUTH_TOKENS: search_api_token,
+        },
+        elasticsearch: servicename,
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Search API - dm-search-api"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      deploy_client = get_deploy_client(username)
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      deploy_client.remove_app(
+        app: {
+          name: appname,
+        },
+        elasticsearch: servicename,
+      )
+    end
+  end
   namespace "dm-api" do
     desc "Deploy Datamarket API (no db dump) - dm-api"
     task "deploy_app", [ :teamname, :username ] do |t, args|
@@ -323,7 +363,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
       deploy_client.deploy_app(
@@ -388,7 +428,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
@@ -436,7 +476,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -481,7 +521,7 @@ namespace "apps" do
 
       api_token = DM_API_TOKEN
       search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -502,7 +542,7 @@ namespace "apps" do
         units: UNITS_PER_APP
       )
     end
-    desc "Remove Datamarket Admin frontend - dm-buyer-frontend"
+    desc "Remove Datamarket Admin frontend - dm-admin-frontend"
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
@@ -516,6 +556,17 @@ namespace "apps" do
       )
     end
   end
+  namespace "post-deploy-tasks" do
+    teamname = gen_team_name(1)
+    username = gen_username(teamname, 1)
+    desc "Import Data To Elasticsearch"
+    task "import_elasticsearch" do |t, args|
+      deploy_client = get_deploy_client(username)
+      from_appname = "dm-api-#{teamname}"
+      to_appname = "dm-search-api-#{teamname}"
+      deploy_client.import_elasticsearch_data(from_appname, to_appname)
+    end
+  end
 
 end
 
@@ -524,6 +575,7 @@ end
 app_list = [
   "flask-app",
   "java-app",
+  "dm-search-api",
   "dm-api",
   "dm-supplier-frontend",
   "dm-buyer-frontend",
@@ -573,8 +625,8 @@ namespace "team_deployment" do
           begin
             task("team_deployment:#{teamname}:#{app}:remove").invoke
           rescue Exception => e
-            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
-            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:remove")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:remove"
             LOGGER.error(e.message)
             LOGGER.debug(e.backtrace.join("\n\t"))
             stop_execution if STOP_ON_ERROR
@@ -614,7 +666,16 @@ namespace "team_deployment" do
 end
 
 desc "Bring up all the environment"
-task "deploy" => [ "clone:all", "teams:create_all", "pre_app_deploy:postgresapi_set_web_concurrency", "team_deployment:deploy_parallel" ]
+task "deploy" => [
+  "clone:all",
+  "teams:create_all",
+  "pre_app_deploy:postgresapi_set_web_concurrency",
+  "team_deployment:deploy_parallel",
+  "apps:post-deploy-tasks:import_elasticsearch"
+]
 desc "Bring down all the environment"
-task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
-
+task "destroy" => [
+  "team_deployment:remove_parallel",
+  "teams:remove_all",
+  "workdir:clean"
+]
