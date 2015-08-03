@@ -168,7 +168,9 @@ class TsuruDeployClient
       "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from services;' | grep -q t )"
     self.logger.info("Going to import Postgres data")
     tsuru_command.app_run_once(app_name, remote_command)
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    if tsuru_command.exit_status != 0
+      self.logger.error(tsuru_command.stderr)
+    end
   end
 
   def import_elasticsearch_data(pg_app_name, es_app_name)
@@ -179,7 +181,9 @@ class TsuruDeployClient
     remote_command = "python scripts/index_services.py #{search_api_url} #{search_api_token} #{api_url} #{api_token} --serial"
     self.logger.info("Going to import Elasticsearch data")
     tsuru_command.app_run_once(pg_app_name, remote_command)
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    if tsuru_command.exit_status != 0
+      self.logger.error(tsuru_command.stderr)
+    end
   end
 
 end
