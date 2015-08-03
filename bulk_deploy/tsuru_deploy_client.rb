@@ -165,7 +165,7 @@ class TsuruDeployClient
       "echo \"*:*:*:${PG_PASSWORD}\" > ~/.pgpass && chmod 600 ~/.pgpass && "\
       "curl #{dump_url} -H '#{auth_header}' | "\
       "( pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE} || "\
-      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from users;' | grep -q t )"
+      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from services;' | grep -q t )"
     self.logger.info("Going to import Postgres data")
     tsuru_command.app_run_once(app_name, remote_command)
     raise tsuru_command.stderr if tsuru_command.exit_status != 0
