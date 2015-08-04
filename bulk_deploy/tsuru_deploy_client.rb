@@ -51,7 +51,7 @@ class TsuruDeployClient
 
   end
 
-  def deploy_app(app:, env_vars: {}, postgres: '', git: false, units: 3)
+  def deploy_app(app:, env_vars: {}, postgres: '', elasticsearch: '', git: false)
     self.logger.info("Going to deploy #{app[:name]}. Check #{@tsuru_output.path} for output.")
 
     if not api_client.list_apps().include? app[:name]
@@ -62,76 +62,97 @@ class TsuruDeployClient
 
     # Check if the app is already running, skip if it is
     deployed_units = self.api_client.get_app_info(app[:name])["units"].length
-    if deployed_units > 1
+    if deployed_units > 0
       self.logger.info("#{app[:name]} is already deployed, skipping. Remove app to redeploy.")
-    else
-      # Set environment variables, if needed
-      if env_vars.length > 0
-        env_vars.each do |key,value|
-          api_client.set_env_var(app[:name], key, value)
-        end
-      end
+      return
+    end
 
-      if postgres != ''
-        instance_name = postgres
-        unless api_client.list_service_instances().include? instance_name
-          self.logger.info("Add postgres service instance #{instance_name}")
-          api_client.add_service_instance("postgresql", instance_name)
-        end
-
-        unless api_client.app_has_service(app[:name], instance_name)
-          self.logger.info("Bind service #{instance_name} to #{app[:name]}")
-          api_client.bind_service_to_app(instance_name, app[:name])
-        end
-      end
-
-      if git
-        self.logger.info("Deploy #{app[:name]} via git. Check #{@tsuru_output.path} for output.")
-        git_command = GitCommandLine.new(app[:dir], {
-          'HOME' => tsuru_home,
-          'GIT_SSH' => ssh_wrapper
-        },
-        {
-          :verbose => ENV['VERBOSE'],
-          :output_file => tsuru_command.output_file
-        })
-        git_command.push(api_client.get_app_repository(app[:name]))
-        raise git_command.stderr if git_command.exit_status != 0
-      else
-        self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
-        tsuru_command.app_deploy(app[:name], app[:dir], '*')
+    # Set environment variables, if needed
+    if env_vars.length > 0
+      env_vars.each do |key,value|
+        api_client.set_env_var(app[:name], key, value)
       end
     end
 
-    deployed_units = self.api_client.get_app_info(app[:name])["units"].length
-    if deployed_units < units
-      self.logger.info("Increasing units of #{app[:name]} #{deployed_units} => #{units}")
-      api_client.add_units(units - deployed_units, app[:name])
+    if postgres != ''
+      bind_service_to_app("postgresql", postgres, app)
+    end
+
+    if elasticsearch != ''
+      bind_service_to_app("elasticsearch", elasticsearch, app)
+    end
+
+    if git
+      self.logger.info("Deploy #{app[:name]} via git. Check #{@tsuru_output.path} for output.")
+      git_command = GitCommandLine.new(app[:dir], {
+        'HOME' => tsuru_home,
+        'GIT_SSH' => ssh_wrapper
+      },
+      {
+        :verbose => ENV['VERBOSE'],
+        :output_file => tsuru_command.output_file
+      })
+      git_command.push(api_client.get_app_repository(app[:name]))
+      raise git_command.stderr if git_command.exit_status != 0
+    else
+      self.logger.info("Deploy #{app[:name]} via app-deploy. Check #{@tsuru_output.path} for output.")
+      tsuru_command.app_deploy(app[:name], app[:dir], '*')
+      raise tsuru_command.stderr if tsuru_command.exit_status != 0
     end
 
     self.logger.info("Finished deploying #{app[:name]}")
   end
 
-  def remove_app(app:, postgres: '')
-    self.logger.info("Going to remove #{app[:name]}")
+  def add_units(app_name:, units: 3)
+    deployed_units = api_client.get_app_info(app_name)["units"].length
 
-    if api_client.list_apps().include? app[:name]
-      self.logger.warn("Application #{app[:name]} does not exist " \
-                       "on the platform #{app[:platform]}")
-      tsuru_command.app_remove(app[:name])
+    if deployed_units >= units
+      self.logger.info("#{app_name} already has enough units, skipping.")
+      return
+    end
+
+    self.logger.info("Increasing units of #{app_name} #{deployed_units} => #{units}")
+    api_client.add_units(units - deployed_units, app_name)
+  end
+
+  def bind_service_to_app(service_name, instance_name, app)
+    unless api_client.list_service_instances().include? instance_name
+      self.logger.info("Add #{service_name} service instance #{instance_name}")
+      api_client.add_service_instance(service_name, instance_name)
+    end
+
+    unless api_client.app_has_service(app[:name], instance_name)
+      self.logger.info("Bind service #{instance_name} to #{app[:name]}")
+      api_client.bind_service_to_app(instance_name, app[:name])
+    end
+  end
+
+  def remove_app(app_name:, postgres: '', elasticsearch: '')
+    self.logger.info("Going to remove #{app_name}")
+
+    if api_client.list_apps().include? app_name
+      tsuru_command.app_remove(app_name)
       raise tsuru_command.stderr if tsuru_command.exit_status != 0
     end
 
     if postgres != ''
-      logger.info "Remove service #{postgres}"
-      retries=5
-      begin
-        sleep 1
-        api_client.remove_service_instance(postgres)
-      rescue Exception => e
-        retry if (retries -= 2) > 0
-        logger.error "Cannot remove service #{postgres}. Exception: #{e}"
-      end
+      remove_service(postgres)
+    end
+
+    if elasticsearch != ''
+      remove_service(elasticsearch)
+    end
+  end
+
+  def remove_service(service)
+    logger.info "Remove service #{service}"
+    retries=5
+    begin
+      sleep 1
+      api_client.remove_service_instance(service)
+    rescue Exception => e
+      retry if (retries -= 2) > 0
+      logger.error "Cannot remove service #{service}. Exception: #{e}"
     end
   end
 
@@ -149,9 +170,26 @@ class TsuruDeployClient
       "echo \"*:*:*:${PG_PASSWORD}\" > ~/.pgpass && chmod 600 ~/.pgpass && "\
       "curl #{dump_url} -H '#{auth_header}' | "\
       "( pg_restore -O -a -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG_DATABASE} || "\
-      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from users;' | grep -q t )"
+      "  psql ${PG_DATABASE} -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -t -c 'SELECT count(*) > 2000 from services;' | grep -q t )"
+    self.logger.info("Going to import Postgres data")
     tsuru_command.app_run_once(app_name, remote_command)
-    raise tsuru_command.stderr if tsuru_command.exit_status != 0
+    tsuru_command.app_run_once(app_name, remote_command)
+    if tsuru_command.exit_status != 0
+      self.logger.error(tsuru_command.stderr)
+    end
+  end
+
+  def import_elasticsearch_data(pg_app_name, es_app_name)
+    search_api_url = "https://" + api_client.get_app_url(es_app_name)
+    search_api_token = api_client.get_env_vars(es_app_name)["DM_SEARCH_API_AUTH_TOKENS"]
+    api_url = "http://0.0.0.0:8888"
+    api_token = api_client.get_env_vars(pg_app_name)["DM_API_AUTH_TOKENS"]
+    remote_command = "python scripts/index_services.py #{search_api_url} #{search_api_token} #{api_url} #{api_token} --serial"
+    self.logger.info("Going to import Elasticsearch data")
+    tsuru_command.app_run_once(pg_app_name, remote_command)
+    if tsuru_command.exit_status != 0
+      self.logger.error(tsuru_command.stderr)
+    end
   end
 
 end

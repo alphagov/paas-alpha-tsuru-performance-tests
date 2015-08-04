@@ -27,7 +27,6 @@ DEFAULT_USER_PASSWORD = ENV['default_user_password'] || "password"
 # datamarket Specific options
 DM_API_TOKEN = ENV['dm_api_token'] || "ourtoken"
 DM_SEARCH_API_TOKEN = ENV['dm_search_api_token'] || "oursearchtoken"
-DM_SEARCH_API_URL = ENV['dm_search_api_url'] || "https://preview-search-api.development.digitalmarketplace.service.gov.uk"
 
 # stop execution on error
 STOP_ON_ERROR = ENV["stop_on_error"] || false
@@ -245,18 +244,29 @@ namespace "apps" do
     task :deploy, [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "flask-app-#{teamname}"
       servicename = "#{teamname}-flask-app-db"
+
       LOGGER.info("#{teamname}: Deploying #{appname} with service #{servicename}")
-      deploy_client.deploy_app(
+      get_deploy_client(username).deploy_app(
         app: {
           name: appname,
           dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
           platform: "python"
         },
         postgres: servicename,
-        git: true,
+        git: true
+      )
+    end
+    desc "Post deploy actions for flask-app"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "flask-app-#{teamname}"
+      @api_client.unlock_app(appname)
+      deploy_client = get_deploy_client(username)
+      deploy_client.add_units(
+        app_name: appname,
         units: UNITS_PER_APP
       )
     end
@@ -264,17 +274,13 @@ namespace "apps" do
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "flask-app-#{teamname}"
+      deploy_client = get_deploy_client(username)
       servicename = "#{teamname}-flask-app-db"
 
       LOGGER.info("#{teamname}: Removing #{appname} with service #{servicename}")
       deploy_client.remove_app(
-        app: {
-          name: appname,
-          dir: File.join(REPOS_DIR, "flask-sqlalchemy-postgres-heroku-example"),
-          platform: "python"
-        },
+        app_name: appname,
         postgres: servicename
       )
     end
@@ -284,16 +290,26 @@ namespace "apps" do
     task :deploy, [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "java-app-#{teamname}"
 
       LOGGER.info("#{teamname}: Deploying #{appname}")
-      deploy_client.deploy_app(
+      get_deploy_client(username).deploy_app(
         app: {
           name: appname,
           dir: File.join(REPOS_DIR, "example-java-jetty"),
           platform: "java"
-        },
+        }
+      )
+    end
+    desc "Post deploy actions for java-app"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "java-app-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
         units: UNITS_PER_APP
       )
     end
@@ -301,14 +317,56 @@ namespace "apps" do
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "java-app-#{teamname}"
+      deploy_client = get_deploy_client(username)
 
       LOGGER.info("#{teamname}: Removing #{appname}")
-      deploy_client.remove_app(
+      deploy_client.remove_app(app_name: appname)
+    end
+  end
+  namespace "dm-search-api" do
+    desc "Deploy Datamarket Search API (no es dump) - dm-search-api"
+    task "deploy", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      LOGGER.info("Deploying #{appname}")
+      get_deploy_client(username).deploy_app(
         app: {
           name: appname,
-        }
+          dir: File.join(REPOS_DIR, "digitalmarketplace-search-api"),
+          platform: "python"
+        },
+        env_vars: {
+          DM_SEARCH_API_AUTH_TOKENS: DM_SEARCH_API_TOKEN,
+        },
+        elasticsearch: servicename
+      )
+    end
+    desc "Post deploy actions for dm-search-api"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-search-api-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
+        units: UNITS_PER_APP
+      )
+    end
+    desc "Remove Datamarket Search API - dm-search-api"
+    task "remove", [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-search-api-#{teamname}"
+      servicename = "#{teamname}-dm-search-api-elasticsearch"
+
+      get_deploy_client(username).remove_app(
+        app_name: appname,
+        elasticsearch: servicename,
       )
     end
   end
@@ -317,13 +375,10 @@ namespace "apps" do
     task "deploy_app", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-api-#{teamname}"
+      deploy_client = get_deploy_client(username)
       servicename = "#{teamname}-dm-api-db"
-
-      api_token = DM_API_TOKEN
-      search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
       deploy_client.deploy_app(
@@ -333,26 +388,24 @@ namespace "apps" do
           platform: "python"
         },
         env_vars: {
-          DM_API_AUTH_TOKENS: api_token,
-          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_API_AUTH_TOKENS: DM_API_TOKEN,
+          DM_SEARCH_API_AUTH_TOKEN: DM_SEARCH_API_TOKEN,
           DM_SEARCH_API_URL: search_api_url,
         },
-        postgres: servicename,
-        units: UNITS_PER_APP
+        postgres: servicename
       )
     end
     desc "Import Datamarket API postgres DB"
     task "import_pg_dump" do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-api-#{teamname}"
 
       pg_dump_url= ENV['dm_api_pg_dump_url'] || raise("You must pass dm_api_pg_dump_url=... with the url to the db dump for DM API")
       pg_dump_auth_header= ENV['dm_api_pg_dump_auth_header'] || raise("You must pass dm_api_pg_dump_auth_header=... with the auth header to access to the db dump for DM API")
 
       LOGGER.info("Importing #{pg_dump_url} in service of #{appname}")
-      deploy_client.import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
+      get_deploy_client(username).import_pg_dump(appname, pg_dump_url, pg_dump_auth_header)
     end
 
     # Aggregates both tasks
@@ -362,18 +415,28 @@ namespace "apps" do
       task("apps:dm-api:import_pg_dump").execute(args)
     end
 
+    desc "Post deploy actions for dm-api"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-api-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
+        units: UNITS_PER_APP
+      )
+    end
+
     desc "Remove Datamarket API - dm-api"
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-api-#{teamname}"
       servicename = "#{teamname}-dm-api-db"
 
-      deploy_client.remove_app(
-        app: {
-          name: appname,
-        },
+      get_deploy_client(username).remove_app(
+        app_name: appname,
         postgres: servicename,
       )
     end
@@ -383,12 +446,9 @@ namespace "apps" do
     task "deploy", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-supplier-frontend-#{teamname}"
-
-      api_token = DM_API_TOKEN
-      search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      deploy_client = get_deploy_client(username)
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       LOGGER.info("Deploying #{appname}")
@@ -401,14 +461,25 @@ namespace "apps" do
         env_vars: {
           DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
           DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_AUTH_TOKEN: DM_API_TOKEN,
           DM_DATA_API_URL: api_url,
           DM_MANDRILL_API_KEY: "somekey",
           DM_PASSWORD_SECRET_KEY: "verySecretKey",
           DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_AUTH_TOKEN: DM_SEARCH_API_TOKEN,
           DM_SEARCH_API_URL: search_api_url
-        },
+        }
+      )
+    end
+    desc "Post deploy actions for dm-supplier-frontend"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-supplier-frontend-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
         units: UNITS_PER_APP
       )
     end
@@ -416,14 +487,9 @@ namespace "apps" do
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-supplier-frontend-#{teamname}"
 
-      deploy_client.remove_app(
-        app: {
-          name: appname,
-        }
-      )
+      get_deploy_client(username).remove_app(app_name: appname)
     end
   end
   namespace "dm-buyer-frontend" do
@@ -431,12 +497,9 @@ namespace "apps" do
     task "deploy", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-buyer-frontend-#{teamname}"
-
-      api_token = DM_API_TOKEN
-      search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      deploy_client = get_deploy_client(username)
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -448,12 +511,23 @@ namespace "apps" do
         env_vars: {
           DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
           DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_AUTH_TOKEN: DM_API_TOKEN,
           DM_DATA_API_URL: api_url,
           DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_AUTH_TOKEN: DM_SEARCH_API_TOKEN,
           DM_SEARCH_API_URL: search_api_url
-        },
+        }
+      )
+    end
+    desc "Post deploy actions for dm-buyer-frontend"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-buyer-frontend-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
         units: UNITS_PER_APP
       )
     end
@@ -461,14 +535,9 @@ namespace "apps" do
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-buyer-frontend-#{teamname}"
 
-      deploy_client.remove_app(
-        app: {
-          name: appname,
-        }
-      )
+      get_deploy_client(username).remove_app(app_name: appname)
     end
   end
   namespace "dm-admin-frontend" do
@@ -476,12 +545,9 @@ namespace "apps" do
     task "deploy", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-admin-frontend-#{teamname}"
-
-      api_token = DM_API_TOKEN
-      search_api_token = DM_SEARCH_API_TOKEN
-      search_api_url = DM_SEARCH_API_URL
+      deploy_client = get_deploy_client(username)
+      search_api_url = "https://" + deploy_client.api_client.get_app_url("dm-search-api-#{teamname}")
       api_url = "https://" + deploy_client.api_client.get_app_url("dm-api-#{teamname}")
 
       deploy_client.deploy_app(
@@ -493,27 +559,43 @@ namespace "apps" do
         env_vars: {
           DM_ADMIN_FRONTEND_COOKIE_SECRET: "secret",
           DM_ADMIN_FRONTEND_PASSWORD_HASH: "JHA1azIkMjcxMCRiNWZmMjhmMmExYTM0OGMyYTY0MjA3ZWFkOTIwNGM3NiQ4OGRLTHBUTWJQUE95UEVvSmg3djZYY2tWQ3lpcTZtaw==",
-          DM_DATA_API_AUTH_TOKEN: api_token,
+          DM_DATA_API_AUTH_TOKEN: DM_API_TOKEN,
           DM_DATA_API_URL: api_url,
           DM_S3_DOCUMENT_BUCKET: "admin-frontend-dev-documents",
-          DM_SEARCH_API_AUTH_TOKEN: search_api_token,
+          DM_SEARCH_API_AUTH_TOKEN: DM_SEARCH_API_TOKEN,
           DM_SEARCH_API_URL: search_api_url
-        },
+        }
+      )
+    end
+    desc "Post deploy actions for dm-admin-frontend"
+    task :post_deploy, [ :teamname, :username ] do |t, args|
+      teamname = args[:teamname]
+      username = args[:username]
+      appname = "dm-admin-frontend-#{teamname}"
+      @api_client.unlock_app(appname)
+
+      get_deploy_client(username).add_units(
+        app_name: appname,
         units: UNITS_PER_APP
       )
     end
-    desc "Remove Datamarket Admin frontend - dm-buyer-frontend"
+    desc "Remove Datamarket Admin frontend - dm-admin-frontend"
     task "remove", [ :teamname, :username ] do |t, args|
       teamname = args[:teamname]
       username = args[:username]
-      deploy_client = get_deploy_client(username)
       appname = "dm-admin-frontend-#{teamname}"
 
-      deploy_client.remove_app(
-        app: {
-          name: appname,
-        }
-      )
+      get_deploy_client(username).remove_app(app_name: appname)
+    end
+  end
+  namespace "post-deploy-tasks" do
+    teamname = gen_team_name(1)
+    username = gen_username(teamname, 1)
+    desc "Import Data To Elasticsearch"
+    task "import_elasticsearch" do |t, args|
+      from_appname = "dm-api-#{teamname}"
+      to_appname = "dm-search-api-#{teamname}"
+      get_deploy_client(username).import_elasticsearch_data(from_appname, to_appname)
     end
   end
 
@@ -522,8 +604,9 @@ end
 
 # Generate specific tasks to deploy apps in each team
 app_list = [
-  "flask-app",
   "java-app",
+  "flask-app",
+  "dm-search-api",
   "dm-api",
   "dm-supplier-frontend",
   "dm-buyer-frontend",
@@ -543,6 +626,11 @@ namespace "team_deployment" do
             # Note: there are differences between calling .invoke and .execute
             # With execute you must pass a hash with the arguments
             task("apps:#{app}:deploy").execute(teamname: teamname, username: username)
+          end
+          task "post_deploy" => [ "tsuru:login_admin" ] do
+            # Note: there are differences between calling .invoke and .execute
+            # With execute you must pass a hash with the arguments
+            task("apps:#{app}:post_deploy").execute(teamname: teamname, username: username)
           end
           task "remove" => [ "tsuru:login_admin" ] do
             task("apps:#{app}:remove").execute(teamname: teamname, username: username)
@@ -566,6 +654,23 @@ namespace "team_deployment" do
           break if execution_stopped?
         }
       end
+      desc "Run post deploy actions for team #{teamname}"
+      task "post_deploy_all" do
+        app_list.map { |app|
+          # Error tolerant per team
+          begin
+            task("team_deployment:#{teamname}:#{app}:post_deploy").invoke
+          rescue Exception => e
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:post_deploy")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:post_deploy"
+            LOGGER.error(e.message)
+            LOGGER.debug(e.backtrace.join("\n\t"))
+            stop_execution if STOP_ON_ERROR
+            break
+          end
+          break if execution_stopped?
+        }
+      end
       desc "Remove all applications for team #{teamname}"
       task "remove_all" do
         app_list.map { |app|
@@ -573,8 +678,8 @@ namespace "team_deployment" do
           begin
             task("team_deployment:#{teamname}:#{app}:remove").invoke
           rescue Exception => e
-            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:deploy")
-            failed_tasks << "team_deployment:#{teamname}:#{app}:deploy"
+            LOGGER.error("Failed running team_deployment:#{teamname}:#{app}:remove")
+            failed_tasks << "team_deployment:#{teamname}:#{app}:remove"
             LOGGER.error(e.message)
             LOGGER.debug(e.backtrace.join("\n\t"))
             stop_execution if STOP_ON_ERROR
@@ -590,6 +695,19 @@ namespace "team_deployment" do
   (1..NUM_TEAMS).map { |team_i|
     teamname = gen_team_name(team_i)
     "team_deployment:#{teamname}:deploy_all"
+  } do
+    if failed_tasks.empty?
+      LOGGER.info("Deployment finished OK")
+    else
+      LOGGER.error("Some tasks failed: " + failed_tasks.join(' '))
+      abort
+    end
+  end
+  desc "Do post deploy actions in parallel for all applications and all teams"
+  multitask "post_deploy_parallel" =>
+  (1..NUM_TEAMS).map { |team_i|
+    teamname = gen_team_name(team_i)
+    "team_deployment:#{teamname}:post_deploy_all"
   } do
     if failed_tasks.empty?
       LOGGER.info("Deployment finished OK")
@@ -614,7 +732,17 @@ namespace "team_deployment" do
 end
 
 desc "Bring up all the environment"
-task "deploy" => [ "clone:all", "teams:create_all", "pre_app_deploy:postgresapi_set_web_concurrency", "team_deployment:deploy_parallel" ]
+task "deploy" => [
+  "clone:all",
+  "teams:create_all",
+  "pre_app_deploy:postgresapi_set_web_concurrency",
+  "team_deployment:deploy_parallel",
+  "team_deployment:post_deploy_parallel",
+  "apps:post-deploy-tasks:import_elasticsearch"
+]
 desc "Bring down all the environment"
-task "destroy" => [ "team_deployment:remove_parallel", "teams:remove_all", "workdir:clean" ]
-
+task "destroy" => [
+  "team_deployment:remove_parallel",
+  "teams:remove_all",
+  "workdir:clean"
+]

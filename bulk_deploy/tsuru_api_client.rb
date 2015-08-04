@@ -219,15 +219,11 @@ class TsuruAPIClient
   end
 
   def add_units(units, app_name)
-    objects = request_json(
+    request_json(
       method: :put,
       path: "/apps/#{app_name}/units",
       body: units.to_s
     )
-
-    for obj in objects
-      @logger.debug(obj["Message"])
-    end
   end
 
   def remove_units(units, app_name)
@@ -268,7 +264,7 @@ class TsuruAPIClient
   end
 
   def set_env_var(app_name, key, value)
-    request_json(
+    request(
       method: :post,
       path: "/apps/#{app_name}/env",
       params: {
@@ -306,6 +302,13 @@ class TsuruAPIClient
     request(
       method: :delete,
       path: "/apps/#{name}"
+    )
+  end
+
+  def unlock_app(app_name)
+    request(
+      method: :delete,
+      path: "/apps/#{app_name}/lock"
     )
   end
 
