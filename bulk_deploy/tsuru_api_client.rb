@@ -160,11 +160,11 @@ class TsuruAPIClient
   def team_has_pool(team, pool="default")
     response = request_json(
       method: :get,
-      path: "/pools"
+      path: "/pool"
     )
 
     response.each do |d|
-      if d["Team"] == team and d["Pools"].include? pool
+      if d["Team"]  == team and d["Pools"].include? pool
         return true
       end
     end
@@ -175,9 +175,8 @@ class TsuruAPIClient
   def add_team_to_pool(team, pool="default")
     request_json(
       method: :post,
-      path: "/pool/team",
+      path: "/pool/#{pool}/team",
       params: {
-        :pool => pool,
         :teams => [team],
       }
     )
@@ -186,9 +185,8 @@ class TsuruAPIClient
   def remove_team_from_pool(team, pool="default")
     request(
       method: :delete,
-      path: "/pool/team",
+      path: "/pool/#{pool}/team",
       params: {
-        :pool => pool,
         :teams => [team],
       }
     )
