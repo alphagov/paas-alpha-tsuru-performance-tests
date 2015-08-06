@@ -74,11 +74,11 @@ class AppType
     @apps.each{ |app|
       if @paths
         @paths.each { |path|
-          app_urls << "http://#{app}.#{@@dns_suffix}#{path}"
+          app_urls << "https://#{app}.#{@@dns_suffix}#{path}"
         }
       else
 
-        app_urls << "http://#{app}.#{@@dns_suffix}/"
+        app_urls << "https://#{app}.#{@@dns_suffix}/"
       end
     }
     app_urls
@@ -105,11 +105,11 @@ app_types = []
 app_types << AppType.new('java', 'java-app-')
 app_types << AppType.new('flask', 'flask-app-')
 app_types << AppType.new('gov_uk', 'gov-uk-', gov_paths)
-app_types << AppType.new('dm-supplier-frontend', 'dm-supplier-frontend-app-', ['/suppliers'])
-app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-app-', dm_buyer_paths)
-app_types << AppType.new('dm-admin-frontend', 'dm-admin-frontend-app-', ['/admin'])
-app_types << AppType.new('dm-search-api', 'dm-search-api-app-')
-app_types << AppType.new('dm-api', 'dm-api-app-')
+app_types << AppType.new('dm-supplier-frontend', 'dm-supplier-frontend-', ['/suppliers'])
+app_types << AppType.new('dm-buyer-frontend', 'dm-buyer-frontend-', dm_buyer_paths)
+app_types << AppType.new('dm-admin-frontend', 'dm-admin-frontend-', ['/admin'])
+app_types << AppType.new('dm-search-api', 'dm-search-api-')
+app_types << AppType.new('dm-api', 'dm-api-')
 app_types << AppType.new('gov-frontend', 'gov-frontend-')
 
 
@@ -142,4 +142,3 @@ app_types.each do |app_type|
     logger.info("Write #{urls.size} URLs to file #{file_name}")
     File.open(file_name, 'w') { |f| f.write urls * "\n" }
 end
-
