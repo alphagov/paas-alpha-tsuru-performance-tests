@@ -160,13 +160,11 @@ class TsuruAPIClient
   def team_has_pool(team, pool="default")
     response = request_json(
       method: :get,
-      path: "/pool"
+      path: "/pools"
     )
 
-    response.each do |d|
-      if d["Team"]  == team and d["Pools"].include? pool
-        return true
-      end
+    if response["pools_by_team"][0]["Pools"].include? pool
+       return true
     end
 
     return false
